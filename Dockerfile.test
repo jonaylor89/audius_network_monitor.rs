@@ -34,7 +34,7 @@ FROM debian:bullseye-slim AS runtime
 WORKDIR /app
 
 RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends openssl ca-certificates cron \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
@@ -45,21 +45,4 @@ COPY --from=builder /app/target/release/audius_network_monitor audius_network_mo
 COPY configuration configuration
 ENV APP_ENVIRONMENT production
 
-
-# Copy hello-cron file to the cron.d directory
-COPY network-monitoring-cron /etc/cron.d/network-monitoring-cron
-
-# Give exeuction rights to entrypoint script
-RUN chmod 0744 /network-monitoring/new_job.sh
- 
-# Give execution rights on the cron job
-RUN chmod 0644 /etc/cron.d/network-monitoring-cron
-
-# Apply cron job
-RUN crontab /etc/cron.d/network-monitoring-cron
- 
-# Create the log file to be able to run tail
-RUN touch /var/log/cron.log
- 
-# Run the command on container startup
-CMD ["cron", "&&", "tail", "-f", "/var/log/cron.log"]
+ENTRYPOINT ["./audius_network_monitor"]
