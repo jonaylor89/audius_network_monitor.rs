@@ -1,8 +1,12 @@
 use futures::{future::join_all, stream::futures_unordered::FuturesUnordered};
 use sqlx::PgPool;
+use thiserror::Error;
 use tokio::join;
 
-use crate::domain::ContentNode;
+use crate::{
+    domain::ContentNode,
+    utils::{make_request, UserStatusPayload},
+};
 
 const BATCH_SIZE: usize = 5_000;
 
@@ -117,11 +121,27 @@ async fn check_secondaries2(
     Ok(())
 }
 
+#[derive(Error, Debug)]
+
+enum GetUserClockValueError {
+    #[error("endpoint string is empty")]
+    EndpointIsEmpty,
+}
+
 #[tracing::instrument]
 async fn get_user_clock_values(
     endpoint: &str,
     wallet_batch: Vec<String>,
-) -> Result<Vec<(String, i32)>, anyhow::Error> {
+) -> Result<Vec<(String, i32)>, GetUserClockValueError> {
+    if endpoint.is_empty() {
+        return Err(GetUserClockValueError::EndpointIsEmpty);
+    }
+
+    let payload = UserStatusPayload {
+        walletPublicKeys: wallet_batch,
+    };
+    let results = make_request(endpoint, &payload);
+
     Ok(vec![("whoa".to_string(), 1)])
 }
 

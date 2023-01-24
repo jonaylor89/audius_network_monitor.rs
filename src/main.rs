@@ -8,7 +8,7 @@ use audius_network_monitor::{
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let subscriber = get_subscriber(
-        "audius_network_monitoring".into(),
+        "audius_network_monitor".into(),
         "info".into(),
         std::io::stdout,
     );
