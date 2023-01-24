@@ -4,7 +4,7 @@ use thiserror::Error;
 use tokio::join;
 
 use crate::{
-    domain::ContentNode,
+    domain::{ContentNode, WalletClockPair},
     utils::{make_request, UserStatusPayload},
 };
 
@@ -126,23 +126,30 @@ async fn check_secondaries2(
 enum GetUserClockValueError {
     #[error("endpoint string is empty")]
     EndpointIsEmpty,
+    #[error("request to content node failed")]
+    ContentNodeRequestError,
 }
 
 #[tracing::instrument]
 async fn get_user_clock_values(
     endpoint: &str,
     wallet_batch: Vec<String>,
-) -> Result<Vec<(String, i32)>, GetUserClockValueError> {
+) -> Result<Vec<WalletClockPair>, GetUserClockValueError> {
     if endpoint.is_empty() {
         return Err(GetUserClockValueError::EndpointIsEmpty);
     }
 
+    let route = "/users/batch_clock_status";
+    let url = format!("{endpoint}{route}");
+
     let payload = UserStatusPayload {
         walletPublicKeys: wallet_batch,
     };
-    let results = make_request(endpoint, &payload);
+    let results = make_request(&url, &payload)
+        .await
+        .map_err(|_| GetUserClockValueError::ContentNodeRequestError)?;
 
-    Ok(vec![("whoa".to_string(), 1)])
+    Ok(results)
 }
 
 #[tracing::instrument(skip(pool))]
@@ -180,7 +187,7 @@ async fn save_primary_batch(
     pool: &PgPool,
     run_id: i32,
     spid: i32,
-    clock_values: Vec<(String, i32)>,
+    clock_values: Vec<WalletClockPair>,
 ) -> Result<(), anyhow::Error> {
     Ok(())
 }
@@ -190,7 +197,7 @@ async fn save_secondary1_batch(
     pool: &PgPool,
     run_id: i32,
     spid: i32,
-    clock_values: Vec<(String, i32)>,
+    clock_values: Vec<WalletClockPair>,
 ) -> Result<(), anyhow::Error> {
     Ok(())
 }
@@ -200,7 +207,7 @@ async fn save_secondary2_batch(
     pool: &PgPool,
     run_id: i32,
     spid: i32,
-    clock_values: Vec<(String, i32)>,
+    clock_values: Vec<WalletClockPair>,
 ) -> Result<(), anyhow::Error> {
     Ok(())
 }
