@@ -25,7 +25,6 @@ pub async fn index_content(pool: PgPool, run_id: i32) -> Result<(), anyhow::Erro
 
 #[tracing::instrument(skip(pool))]
 async fn check_users(pool: PgPool, run_id: i32, cnode: ContentNode) -> Result<(), anyhow::Error> {
-
     let ContentNode { spid, endpoint } = cnode;
     let (primary_count, secondary1_count, secondary2_count) =
         get_user_counts(&pool, run_id, spid).await?;
@@ -60,11 +59,11 @@ async fn check_primaries(
     spid: i32,
     endpoint: &str,
 ) -> Result<(), anyhow::Error> {
-
     for offset in (0..count).step_by(BATCH_SIZE) {
-
         let wallet_batch = get_primary_batch(pool, run_id, spid, offset).await?;
-        if wallet_batch.length == 0 { continue }
+        if wallet_batch.is_empty() {
+            continue;
+        }
 
         let clock_values = get_user_clock_values(endpoint, wallet_batch).await?;
 
@@ -82,11 +81,11 @@ async fn check_secondaries1(
     spid: i32,
     endpoint: &str,
 ) -> Result<(), anyhow::Error> {
-
     for offset in (0..count).step_by(BATCH_SIZE) {
-
         let wallet_batch = get_secondary1_batch(pool, run_id, spid, offset).await?;
-        if wallet_batch.length == 0 { continue }
+        if wallet_batch.is_empty() {
+            continue;
+        }
 
         let clock_values = get_user_clock_values(endpoint, wallet_batch).await?;
 
@@ -104,11 +103,11 @@ async fn check_secondaries2(
     spid: i32,
     endpoint: &str,
 ) -> Result<(), anyhow::Error> {
-
     for offset in (0..count).step_by(BATCH_SIZE) {
-
         let wallet_batch = get_secondary2_batch(pool, run_id, spid, offset).await?;
-        if wallet_batch.length == 0 { continue }
+        if wallet_batch.is_empty() {
+            continue;
+        }
 
         let clock_values = get_user_clock_values(endpoint, wallet_batch).await?;
 
@@ -119,6 +118,69 @@ async fn check_secondaries2(
 }
 
 #[tracing::instrument]
-async fn get_user_clock_values() -> Result<(), anyhow::Error> {
+async fn get_user_clock_values(
+    endpoint: &str,
+    wallet_batch: Vec<String>,
+) -> Result<Vec<(String, i32)>, anyhow::Error> {
+    Ok(vec![("whoa".to_string(), 1)])
+}
+
+#[tracing::instrument(skip(pool))]
+async fn get_primary_batch(
+    pool: &PgPool,
+    run_id: i32,
+    spid: i32,
+    offset: i32,
+) -> Result<Vec<String>, anyhow::Error> {
+    Ok(vec!["whoa".to_string()])
+}
+
+#[tracing::instrument(skip(pool))]
+async fn get_secondary1_batch(
+    pool: &PgPool,
+    run_id: i32,
+    spid: i32,
+    offset: i32,
+) -> Result<Vec<String>, anyhow::Error> {
+    Ok(vec!["whoa".to_string()])
+}
+
+#[tracing::instrument(skip(pool))]
+async fn get_secondary2_batch(
+    pool: &PgPool,
+    run_id: i32,
+    spid: i32,
+    offset: i32,
+) -> Result<Vec<String>, anyhow::Error> {
+    Ok(vec!["whoa".to_string()])
+}
+
+#[tracing::instrument(skip(pool))]
+async fn save_primary_batch(
+    pool: &PgPool,
+    run_id: i32,
+    spid: i32,
+    clock_values: Vec<(String, i32)>,
+) -> Result<(), anyhow::Error> {
+    Ok(())
+}
+
+#[tracing::instrument(skip(pool))]
+async fn save_secondary1_batch(
+    pool: &PgPool,
+    run_id: i32,
+    spid: i32,
+    clock_values: Vec<(String, i32)>,
+) -> Result<(), anyhow::Error> {
+    Ok(())
+}
+
+#[tracing::instrument(skip(pool))]
+async fn save_secondary2_batch(
+    pool: &PgPool,
+    run_id: i32,
+    spid: i32,
+    clock_values: Vec<(String, i32)>,
+) -> Result<(), anyhow::Error> {
     Ok(())
 }

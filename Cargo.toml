@@ -11,7 +11,7 @@ license = "MIT"
 path = "src/lib.rs"
 
 [[bin]]
-name = "audius_network_monitoring"
+name = "audius_network_monitor"
 path = "src/main.rs"
 
 [dependencies]

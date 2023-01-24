@@ -1,8 +1,9 @@
 use audius_network_monitor::{
     configuration::get_configuration,
+    content::index_content,
     db::{create_foreign_connection, get_connection_pool},
     discovery::index_discovery,
-    telemetry::{get_subscriber, init_subscriber}, content::index_content,
+    telemetry::{get_subscriber, init_subscriber},
 };
 
 #[tokio::main]

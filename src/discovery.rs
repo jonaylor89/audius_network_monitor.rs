@@ -95,24 +95,24 @@ async fn import_users(_pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> 
     // sqlx::query!(
     //     r#"
     //     INSERT INTO network_monitoring_users (
-    //         user_id, 
-    //         wallet, 
-    //         replica_set, 
+    //         user_id,
+    //         wallet,
+    //         replica_set,
     //         run_id,
-    //         primarySpID, 
-    //         secondary1SpID, 
+    //         primarySpID,
+    //         secondary1SpID,
     //         secondary2SpID
     //     )
-    //     SELECT 
-    //         user_id, 
-    //         wallet, 
-    //         creator_node_endpoint as replica_set, 
+    //     SELECT
+    //         user_id,
+    //         wallet,
+    //         creator_node_endpoint as replica_set,
     //         $1,
-    //         primary_id as primarySpID, 
+    //         primary_id as primarySpID,
     //         secondary_ids[1] as secondary1SpID,
     //         secondary_ids[2] as secondary2SpID
     //     FROM users
-    //     WHERE is_current = TRUE; 
+    //     WHERE is_current = TRUE;
     // "#,
     //     run_id,
     // )
@@ -129,7 +129,6 @@ async fn import_content_nodes(_pool: &PgPool, run_id: i32) -> Result<(), anyhow:
 
 #[tracing::instrument(skip(_pool))]
 async fn import_cids(_pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
-
     // sqlx::query!(r#"
     //     INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)
     //     SELECT metadata_multihash, $1, 'metadata', user_id
@@ -166,8 +165,8 @@ async fn import_cids(_pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
 
     // sqlx::query!(r#"
     //     INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)
-    //     SELECT cover_photo_sizes, $1, 'dir', user_id 
-    //     FROM users 
+    //     SELECT cover_photo_sizes, $1, 'dir', user_id
+    //     FROM users
     //     WHERE cover_photo_sizes IS NOT NULL
     //     AND is_current = TRUE;
     // "#, run_id).execute(pool).await?;
@@ -183,7 +182,7 @@ async fn import_cids(_pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
     // sqlx::query!(r#"
     //     INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)
     //     SELECT cover_art_sizes, $1, 'dir', owner_id
-    //     FROM tracks 
+    //     FROM tracks
     //     WHERE cover_art_sizes IS NOT NULL
     //     AND is_current = TRUE;
     // "#, run_id).execute(pool).await?;
@@ -191,7 +190,7 @@ async fn import_cids(_pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
     // sqlx::query!(r#"
     //     INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)
     //     SELECT metadata_multihash, $1, 'metadata', owner_id
-    //     FROM tracks 
+    //     FROM tracks
     //     WHERE metadata_multihash IS NOT NULL
     //     AND is_current = TRUE;
     // "#, run_id).execute(pool).await?;
@@ -199,16 +198,16 @@ async fn import_cids(_pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
     // sqlx::query!(r#"
     //     INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)
     //     SELECT download -> 'cid' as cid, $1, 'track', owner_id
-    //     FROM tracks 
+    //     FROM tracks
     //     WHERE download -> 'cid' != 'null'
     //     AND is_current = TRUE;
     // "#, run_id).execute(pool).await?;
 
     // sqlx::query!(r#"
     //     INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)
-    //     SELECT 
-    //         jsonb_array_elements(track_segments) -> 'multihash', 
-    //         $1, 
+    //     SELECT
+    //         jsonb_array_elements(track_segments) -> 'multihash',
+    //         $1,
     //         'track',
     //         owner_id
     //     FROM tracks
