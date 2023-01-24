@@ -1,0 +1,7 @@
+/target
+
+.env
+.env.*
+
+configuration/local.yml
+configuration/production.yml

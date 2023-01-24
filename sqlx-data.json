@@ -1,0 +1,67 @@
+{
+  "db": "PostgreSQL",
+  "15cb84e5ba4a16c7ca6cb444bf273b6c8fca5bbc93fb9bdabfcdf8f54a68800e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        DELETE FROM network_monitoring_index_blocks\n        WHERE run_id < $1; \n    "
+  },
+  "1e27ddeddc588984a9a83889727fa75e3764d86cf2fafc9ae23617a9d9c734bc": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        UPDATE network_monitoring_index_blocks \n        SET is_current = FALSE\n        WHERE blocknumber != $1;\n    "
+  },
+  "20f32d0f6c9573583392ecde77cc200f07274f0fa7bd6c16b08b7bf9421f79a9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "run_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_index_blocks (\n            is_current, \n            blocknumber, \n            is_complete,\n            created_at\n        ) VALUES (\n            TRUE,\n            $1,\n            FALSE,\n            NOW()\n        )\n        RETURNING run_id; \n    "
+  },
+  "7ada7305aa2ccbe5c1eac6011c54b50a1b27be328383b4df696f38dae0cbd3eb": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        CREATE EXTENSION IF NOT EXISTS postgres_fdw;\n    "
+  },
+  "856274204cf6b1209e1e5458ef5e21033192a098078671af3f4e6b903df890f8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        IMPORT FOREIGN SCHEMA \"public\"\n        LIMIT\n                TO (users, tracks, blocks, ursm_content_nodes)\n        FROM\n                SERVER fdw_server_connection INTO public; \n        "
+  }
+}
