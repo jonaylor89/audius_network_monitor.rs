@@ -7,7 +7,8 @@ pub struct ContentNode {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WalletClockPair {
-    pub walletPublicKey: String,
+    pub wallet_public_key: String,
     pub clock: i32,
 }

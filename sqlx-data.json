@@ -63,5 +63,44 @@
       }
     },
     "query": "\n        IMPORT FOREIGN SCHEMA \"public\"\n        LIMIT\n                TO (users, tracks, blocks, ursm_content_nodes)\n        FROM\n                SERVER fdw_server_connection INTO public; \n        "
+  },
+  "8bef028ac8c2e732b07f15c5b789f859665cc35fc951768ab629f81270c52480": {
+    "describe": {
+      "columns": [
+        {
+          "name": "spid",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "primary_count",
+          "ordinal": 1,
+          "type_info": "Int8"
+        },
+        {
+          "name": "secondary1_count",
+          "ordinal": 2,
+          "type_info": "Int8"
+        },
+        {
+          "name": "secondary2_count",
+          "ordinal": 3,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        true,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        SELECT primary_group.spid as spid, primary_count, secondary1_count, secondary2_count\n        FROM (\n            (\n                SELECT primaryspid AS spid, COUNT(*) AS primary_count\n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY primaryspid\n            ) as primary_group\n            JOIN \n            (\n                SELECT secondary1spid AS spid, COUNT(*) AS secondary1_count \n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY secondary1spid\n            ) secondary1_group\n            ON primary_group.spid = secondary1_group.spid\n            JOIN\n            (\n                SELECT secondary2spid AS spid, COUNT(*) AS secondary2_count \n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY secondary2spid\n            ) secondary2_group\n            ON primary_group.spid = secondary2_group.spid\n        )\n        WHERE primary_group.spid = $2; \n    "
   }
 }
