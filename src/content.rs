@@ -190,7 +190,7 @@ async fn get_batch(
     pool: &PgPool,
     run_id: i32,
     spid: i32,
-    offset: i32,
+    offset: i64,
 ) -> Result<Vec<String>, anyhow::Error> {
     Ok(vec!["whoa".to_string()])
 }
