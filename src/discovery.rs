@@ -19,7 +19,6 @@ pub async fn index_discovery(pool: PgPool) -> Result<i32, anyhow::Error> {
 #[tracing::instrument(skip(pool))]
 async fn create_new_run(pool: &PgPool) -> Result<i32, anyhow::Error> {
     // get latest block number
-    let latest_block_number = 100_000;
     let latest_block_number = sqlx::query!(
         r#"
         SELECT number FROM blocks WHERE is_current = TRUE LIMIT 1;
