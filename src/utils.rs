@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::WalletClockPair;
 
-const unhealthy_time_range_ms: i32 = 300_000; // 5min
+const UNHEALTHY_TIME_RANGE_MS: i32 = 300_000; // 5min
 
 #[derive(Debug, Serialize, Deserialize)]
 

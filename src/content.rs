@@ -156,7 +156,7 @@ async fn check_replica(
 
         let clock_values = get_user_clock_values(endpoint, wallet_batch).await?;
 
-        save_batch(replica, pool, run_id, spid, clock_values).await?;
+        save_batch(replica, pool, run_id, spid, &clock_values).await?;
     }
 
     Ok(())
@@ -192,7 +192,70 @@ async fn get_batch(
     spid: i32,
     offset: i64,
 ) -> Result<Vec<String>, anyhow::Error> {
-    Ok(vec!["whoa".to_string()])
+    let batch = match replica {
+        Replica::Primary => sqlx::query!(
+            r#"
+                    SELECT wallet 
+                    FROM network_monitoring_users
+                    WHERE run_id = $1
+                    AND primaryspid = $2
+                    ORDER BY user_id 
+                    OFFSET $3
+                    LIMIT $4; 
+                "#,
+            run_id,
+            spid,
+            offset,
+            BATCH_SIZE as i64,
+        )
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|row| row.wallet.unwrap_or_default())
+        .collect::<Vec<String>>(),
+        Replica::Secondary1 => sqlx::query!(
+            r#"
+                    SELECT wallet 
+                    FROM network_monitoring_users
+                    WHERE run_id = $1
+                    AND secondary1spid = $2
+                    ORDER BY user_id 
+                    OFFSET $3
+                    LIMIT $4; 
+                "#,
+            run_id,
+            spid,
+            offset,
+            BATCH_SIZE as i64,
+        )
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|row| row.wallet.unwrap_or_default())
+        .collect::<Vec<String>>(),
+        Replica::Secondary2 => sqlx::query!(
+            r#"
+                    SELECT wallet 
+                    FROM network_monitoring_users
+                    WHERE run_id = $1
+                    AND secondary2spid = $2
+                    ORDER BY user_id 
+                    OFFSET $3
+                    LIMIT $4; 
+                "#,
+            run_id,
+            spid,
+            offset,
+            BATCH_SIZE as i64,
+        )
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|row| row.wallet.unwrap_or_default())
+        .collect::<Vec<String>>(),
+    };
+
+    Ok(batch)
 }
 
 #[tracing::instrument(skip(pool))]
@@ -201,7 +264,70 @@ async fn save_batch(
     pool: &PgPool,
     run_id: i32,
     spid: i32,
-    clock_values: Vec<WalletClockPair>,
+    clock_values: &Vec<WalletClockPair>,
 ) -> Result<(), anyhow::Error> {
+    let mini_batch_size = 500;
+    let count = clock_values.len();
+
+    for offset in (0..count).step_by(mini_batch_size) {
+        let end = if (offset + mini_batch_size) >= count {
+            count - 1
+        } else {
+            offset + mini_batch_size
+        };
+
+        let mini_batch = &clock_values[offset..end];
+
+        let (wallets, clocks): (Vec<String>, Vec<i32>) = mini_batch
+            .iter()
+            .map(|pair| (pair.wallet_public_key.clone(), pair.clock))
+            .unzip();
+
+        match replica {
+            Replica::Primary => {
+                sqlx::query!(
+                    r#"
+                    UPDATE network_monitoring_users as nm_users
+                    SET primary_clock_value = tmp.clock
+                    FROM UNNEST($2::text[], $3::int[]) AS tmp(wallet, clock)
+                    WHERE nm_users.wallet = tmp.wallet
+                    AND nm_users.run_id = $1;
+                "#,
+                    run_id,
+                    &wallets,
+                    &clocks,
+                )
+            }
+            Replica::Secondary1 => {
+                sqlx::query!(
+                    r#"
+                    UPDATE network_monitoring_users as nm_users
+                    SET secondary1_clock_value = tmp.clock
+                    FROM UNNEST($2::text[], $3::int[]) AS tmp(wallet, clock)
+                    WHERE nm_users.wallet = tmp.wallet
+                    AND nm_users.run_id = $1;
+                "#,
+                    run_id,
+                    &wallets,
+                    &clocks,
+                )
+            }
+            Replica::Secondary2 => {
+                sqlx::query!(
+                    r#"
+                    UPDATE network_monitoring_users as nm_users
+                    SET secondary2_clock_value = tmp.clock
+                    FROM UNNEST($2::text[], $3::int[]) AS tmp(wallet, clock)
+                    WHERE nm_users.wallet = tmp.wallet
+                    AND nm_users.run_id = $1;
+                "#,
+                    run_id,
+                    &wallets,
+                    &clocks,
+                )
+            }
+        }.execute(pool).await?;
+    }
+
     Ok(())
 }
