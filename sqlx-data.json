@@ -1,3 +1,399 @@
 {
-  "db": "PostgreSQL"
+  "db": "PostgreSQL",
+  "0089a81e2c471ceefb6c1cff763d23941dce606379af7502541bca4c73c4d791": {
+    "describe": {
+      "columns": [
+        {
+          "name": "wallet",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n                    SELECT wallet \n                    FROM network_monitoring_users\n                    WHERE run_id = $1\n                    AND secondary2spid = $2\n                    ORDER BY user_id \n                    OFFSET $3\n                    LIMIT $4; \n                "
+  },
+  "02aa7f07f187cf2c39b86633303f135ed6960437f57249d3e1d47fa0df7215e3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_users (\n            user_id,\n            wallet,\n            replica_set,\n            run_id,\n            primarySpID,\n            secondary1SpID,\n            secondary2SpID\n        )\n        SELECT\n            user_id,\n            wallet,\n            creator_node_endpoint as replica_set,\n            $1,\n            primary_id as primarySpID,\n            secondary_ids[1] as secondary1SpID,\n            secondary_ids[2] as secondary2SpID\n        FROM users\n        WHERE is_current = TRUE;\n    "
+  },
+  "058ebc6a1ca1ea4563a742a90926375f34a406882ffe26261c47b87634e131ae": {
+    "describe": {
+      "columns": [
+        {
+          "name": "wallet",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n                    SELECT wallet \n                    FROM network_monitoring_users\n                    WHERE run_id = $1\n                    AND primaryspid = $2\n                    ORDER BY user_id \n                    OFFSET $3\n                    LIMIT $4; \n                "
+  },
+  "15cb84e5ba4a16c7ca6cb444bf273b6c8fca5bbc93fb9bdabfcdf8f54a68800e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        DELETE FROM network_monitoring_index_blocks\n        WHERE run_id < $1; \n    "
+  },
+  "1e27ddeddc588984a9a83889727fa75e3764d86cf2fafc9ae23617a9d9c734bc": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        UPDATE network_monitoring_index_blocks \n        SET is_current = FALSE\n        WHERE blocknumber != $1;\n    "
+  },
+  "20f32d0f6c9573583392ecde77cc200f07274f0fa7bd6c16b08b7bf9421f79a9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "run_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_index_blocks (\n            is_current, \n            blocknumber, \n            is_complete,\n            created_at\n        ) VALUES (\n            TRUE,\n            $1,\n            FALSE,\n            NOW()\n        )\n        RETURNING run_id; \n    "
+  },
+  "22d12668eca4d93d8cf79924511bff01ffdce3d0610cc5c5088002d48424c9d1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "TextArray",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n                    UPDATE network_monitoring_users as nm_users\n                    SET secondary2_clock_value = tmp.clock\n                    FROM UNNEST($2::text[], $3::int[]) AS tmp(wallet, clock)\n                    WHERE nm_users.wallet = tmp.wallet\n                    AND nm_users.run_id = $1;\n                "
+  },
+  "2607830748ad377074e01c603d528f7acae0780b133c9de9afe59d98683b5e48": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT metadata_multihash, $1, 'metadata', owner_id\n        FROM tracks\n        WHERE metadata_multihash IS NOT NULL\n        AND is_current = TRUE;\n    "
+  },
+  "30afd3f73524497ab5ad50b2c382948af177a6ecfdbc6c66bf4d9db8598e4941": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n    INSERT INTO network_monitoring_content_nodes (\n        spID, \n        endpoint, \n        run_id\n    )\n    SELECT cnode_sp_id, endpoint, $1\n    FROM ursm_content_nodes\n    WHERE is_current = TRUE; \n    "
+  },
+  "3111b4c959735388f26f78fbed3978ca787d54c36d669398591551d5e3180ea5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT cover_photo, $1, 'image', user_id\n        FROM users\n        WHERE cover_photo IS NOT NULL\n        AND is_current = TRUE;\n    "
+  },
+  "3f515628c922f9194657c6c2c893df85f09f95f4ca69b94bdd9b48c3bd48f40a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT cover_photo_sizes, $1, 'dir', user_id\n        FROM users\n        WHERE cover_photo_sizes IS NOT NULL\n        AND is_current = TRUE;\n    "
+  },
+  "664052c3ebcc0cbeedef645e9787b05650cbb16722a07fb6463755de096495ce": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT profile_picture, $1, 'image', user_id\n        FROM users\n        WHERE profile_picture IS NOT NULL\n        AND profile_picture != '0'\n        AND user_id IS NOT NULL\n        AND is_current = TRUE;\n    "
+  },
+  "7ada7305aa2ccbe5c1eac6011c54b50a1b27be328383b4df696f38dae0cbd3eb": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        CREATE EXTENSION IF NOT EXISTS postgres_fdw;\n    "
+  },
+  "7bf06ecfa1fd681b10288a452d182c864e992ef3f24d1555ac869af5444dcf91": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT\n            jsonb_array_elements(track_segments) -> 'multihash',\n            $1,\n            'track',\n            owner_id\n        FROM tracks\n        WHERE track_segments IS NOT NULL\n        AND is_current = TRUE;\n    "
+  },
+  "8b8f2f29624f0b9d6163163cad2c245d83e017debfe90b3bc6f91dc3edd3aea0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT download -> 'cid' as cid, $1, 'track', owner_id\n        FROM tracks\n        WHERE download -> 'cid' != 'null'\n        AND is_current = TRUE;\n    "
+  },
+  "8bef028ac8c2e732b07f15c5b789f859665cc35fc951768ab629f81270c52480": {
+    "describe": {
+      "columns": [
+        {
+          "name": "spid",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "primary_count",
+          "ordinal": 1,
+          "type_info": "Int8"
+        },
+        {
+          "name": "secondary1_count",
+          "ordinal": 2,
+          "type_info": "Int8"
+        },
+        {
+          "name": "secondary2_count",
+          "ordinal": 3,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        true,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        SELECT primary_group.spid as spid, primary_count, secondary1_count, secondary2_count\n        FROM (\n            (\n                SELECT primaryspid AS spid, COUNT(*) AS primary_count\n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY primaryspid\n            ) as primary_group\n            JOIN \n            (\n                SELECT secondary1spid AS spid, COUNT(*) AS secondary1_count \n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY secondary1spid\n            ) secondary1_group\n            ON primary_group.spid = secondary1_group.spid\n            JOIN\n            (\n                SELECT secondary2spid AS spid, COUNT(*) AS secondary2_count \n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY secondary2spid\n            ) secondary2_group\n            ON primary_group.spid = secondary2_group.spid\n        )\n        WHERE primary_group.spid = $2; \n    "
+  },
+  "a99f8841477a648e36b15823a637e1dac5075874b4916f319eb5882e4d67fa74": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "TextArray",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n                    UPDATE network_monitoring_users as nm_users\n                    SET secondary1_clock_value = tmp.clock\n                    FROM UNNEST($2::text[], $3::int[]) AS tmp(wallet, clock)\n                    WHERE nm_users.wallet = tmp.wallet\n                    AND nm_users.run_id = $1;\n                "
+  },
+  "b3a233e6ddd1573696c986f41518aaef240fde340c1f3220d604bd258adc4ac4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT metadata_multihash, $1, 'metadata', user_id\n        FROM users\n        WHERE metadata_multihash IS NOT NULL\n        AND is_current = TRUE;\n    "
+  },
+  "b70433741358c5a5448c5f4948b2c28acff1c16c4c54786d37033d614888e94e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "number",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        SELECT number FROM blocks WHERE is_current = TRUE LIMIT 1;\n        "
+  },
+  "cde9625ab5b6b0bff681d06a3203242e510d55e71d1f84c0fd6eb55b3ea8f5ea": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "TextArray",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n                    UPDATE network_monitoring_users as nm_users\n                    SET primary_clock_value = tmp.clock\n                    FROM UNNEST($2::text[], $3::int[]) AS tmp(wallet, clock)\n                    WHERE nm_users.wallet = tmp.wallet\n                    AND nm_users.run_id = $1;\n                "
+  },
+  "d92c10808f17901f76d7adbda4849904a444f093b816622818df21f19b6198c5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT cover_art_sizes, $1, 'dir', owner_id\n        FROM tracks\n        WHERE cover_art_sizes IS NOT NULL\n        AND is_current = TRUE;\n    "
+  },
+  "da552bbfc69d25927172e6d0ffc684eaaa5da7fd60e08fbdfc432672b96a0abe": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT cover_art, $1, 'image', owner_id\n        FROM tracks\n        WHERE cover_art IS NOT NULL\n        AND is_current = TRUE;\n    "
+  },
+  "dc4c5909a6ea159554fb8765f8e763c2b9fe29d29fe730b67ef54b039fd7dce5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        IMPORT FOREIGN SCHEMA \"public\"\n        LIMIT\n                TO (users, tracks, blocks, ursm_content_nodes)\n        FROM\n                SERVER fdw_server_connection INTO discovery; \n        "
+  },
+  "dd3329af9e97a44fe0e9e07274c2792276a67772ccf52872124e66394da669fa": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        DROP SCHEMA IF EXISTS discovery CASCADE;\n    "
+  },
+  "dd65224ee030b63dc1ada96dc62c0b856de90338244a0abc6e6994187f04deb2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT profile_picture_sizes, $1, 'dir', user_id\n        FROM users\n        WHERE profile_picture_sizes IS NOT NULL\n        AND is_current = TRUE;\n    "
+  },
+  "ddd5ad17051e8b1bf67683c07e0b43692d73be9dd03b7bf0b3d7750ab1c6e928": {
+    "describe": {
+      "columns": [
+        {
+          "name": "wallet",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n                    SELECT wallet \n                    FROM network_monitoring_users\n                    WHERE run_id = $1\n                    AND secondary1spid = $2\n                    ORDER BY user_id \n                    OFFSET $3\n                    LIMIT $4; \n                "
+  },
+  "ef1875993a3b828ae0f793f26935b51c0cc891fe4d461db2ac91e185165a1ab3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        CREATE SCHEMA discovery;\n    "
+  }
 }
