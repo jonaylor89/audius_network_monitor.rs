@@ -1,13 +1,14 @@
 version: '3'
 services:
   network-monitoring-db:
-    image: postgres:11.1
+    image: postgres:14
     shm_size: 4gb
     environment:
       POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: trust
       POSTGRES_DB: audius_network_monitoring
     volumes:
-      - postgres_data_network_monitoring_1:/var/lib/postgresql/data/
+      - postgres_data_network_monitoring_rs:/var/lib/postgresql/data/
     ports:
       - '5444:5432'
     healthcheck:
@@ -24,10 +25,10 @@ services:
   network-monitoring:
     build: 
       context: '.'
-      # dockerfile: Dockerfile.test
+      dockerfile: Dockerfile.test
     depends_on:
       - network-monitoring-db
       - network-monitoring-push-gateway
 
 volumes:
-  postgres_data_network_monitoring_1:
+  postgres_data_network_monitoring_rs:

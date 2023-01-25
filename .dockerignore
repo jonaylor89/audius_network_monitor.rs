@@ -4,4 +4,3 @@ tests/
 Dockerfile
 Dockerfile.test
 scripts/
-migrations/
