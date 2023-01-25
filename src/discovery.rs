@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-#[tracing::instrument()]
+#[tracing::instrument]
 pub async fn index_discovery(pool: &PgPool) -> Result<i32, anyhow::Error> {
     // create new run
     let run_id = create_new_run(pool).await?;

@@ -29,6 +29,7 @@ async fn main() -> anyhow::Result<()> {
     index_content(pool, run_id).await?;
 
     // Generate Metrics
+    // generate_metrics(pool, run_id).await?
 
     Ok(())
 }
