@@ -1,6 +1,11 @@
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use tokio_retry::{
+    strategy::{jitter, ExponentialBackoff},
+    Retry,
+};
 
 use crate::domain::WalletClockPair;
 
@@ -22,6 +27,20 @@ pub struct UserStatusPayload {
 
 #[tracing::instrument]
 pub async fn make_request(
+    url: &str,
+    payload: &UserStatusPayload,
+) -> Result<Vec<WalletClockPair>, anyhow::Error> {
+    let retry_strategy = ExponentialBackoff::from_millis(10)
+        .map(jitter) // add jitter to delays
+        .take(3); // limit to 3 retries
+
+    let wallet_batch =
+        Retry::spawn(retry_strategy, async || network_call(url, payload).await).await?;
+
+    Ok(wallet_batch)
+}
+
+async fn network_call(
     url: &str,
     payload: &UserStatusPayload,
 ) -> Result<Vec<WalletClockPair>, anyhow::Error> {
