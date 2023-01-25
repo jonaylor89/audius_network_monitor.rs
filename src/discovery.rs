@@ -1,17 +1,17 @@
 use sqlx::PgPool;
 
 #[tracing::instrument()]
-pub async fn index_discovery(pool: PgPool) -> Result<i32, anyhow::Error> {
+pub async fn index_discovery(pool: &PgPool) -> Result<i32, anyhow::Error> {
     // create new run
-    let run_id = create_new_run(&pool).await?;
+    let run_id = create_new_run(pool).await?;
 
-    delete_old_run_data(&pool, run_id).await?;
+    delete_old_run_data(pool, run_id).await?;
 
-    import_users(&pool, run_id).await?;
+    import_users(pool, run_id).await?;
 
-    import_content_nodes(&pool, run_id).await?;
+    import_content_nodes(pool, run_id).await?;
 
-    import_cids(&pool, run_id).await?;
+    import_cids(pool, run_id).await?;
 
     Ok(run_id)
 }

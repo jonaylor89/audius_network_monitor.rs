@@ -22,11 +22,11 @@ async fn main() -> anyhow::Result<()> {
     create_foreign_connection(&pool, &configuration.foreign_database).await?;
 
     // Index Discovery
-    let run_id = index_discovery(pool).await?;
+    let run_id = index_discovery(&pool).await?;
     tracing::info!("{}", run_id);
 
     // Index Content
-    // index_content(pool, run_id).await?;
+    index_content(pool, run_id).await?;
 
     // Generate Metrics
 
