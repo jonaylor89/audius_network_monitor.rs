@@ -1,5 +1,51 @@
 {
   "db": "PostgreSQL",
+  "0089a81e2c471ceefb6c1cff763d23941dce606379af7502541bca4c73c4d791": {
+    "describe": {
+      "columns": [
+        {
+          "name": "wallet",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n                    SELECT wallet \n                    FROM network_monitoring_users\n                    WHERE run_id = $1\n                    AND secondary2spid = $2\n                    ORDER BY user_id \n                    OFFSET $3\n                    LIMIT $4; \n                "
+  },
+  "058ebc6a1ca1ea4563a742a90926375f34a406882ffe26261c47b87634e131ae": {
+    "describe": {
+      "columns": [
+        {
+          "name": "wallet",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n                    SELECT wallet \n                    FROM network_monitoring_users\n                    WHERE run_id = $1\n                    AND primaryspid = $2\n                    ORDER BY user_id \n                    OFFSET $3\n                    LIMIT $4; \n                "
+  },
   "15cb84e5ba4a16c7ca6cb444bf273b6c8fca5bbc93fb9bdabfcdf8f54a68800e": {
     "describe": {
       "columns": [],
@@ -43,6 +89,20 @@
       }
     },
     "query": "\n        INSERT INTO network_monitoring_index_blocks (\n            is_current, \n            blocknumber, \n            is_complete,\n            created_at\n        ) VALUES (\n            TRUE,\n            $1,\n            FALSE,\n            NOW()\n        )\n        RETURNING run_id; \n    "
+  },
+  "22d12668eca4d93d8cf79924511bff01ffdce3d0610cc5c5088002d48424c9d1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "TextArray",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n                    UPDATE network_monitoring_users as nm_users\n                    SET secondary2_clock_value = tmp.clock\n                    FROM UNNEST($2::text[], $3::int[]) AS tmp(wallet, clock)\n                    WHERE nm_users.wallet = tmp.wallet\n                    AND nm_users.run_id = $1;\n                "
   },
   "7ada7305aa2ccbe5c1eac6011c54b50a1b27be328383b4df696f38dae0cbd3eb": {
     "describe": {
@@ -102,5 +162,56 @@
       }
     },
     "query": "\n        SELECT primary_group.spid as spid, primary_count, secondary1_count, secondary2_count\n        FROM (\n            (\n                SELECT primaryspid AS spid, COUNT(*) AS primary_count\n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY primaryspid\n            ) as primary_group\n            JOIN \n            (\n                SELECT secondary1spid AS spid, COUNT(*) AS secondary1_count \n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY secondary1spid\n            ) secondary1_group\n            ON primary_group.spid = secondary1_group.spid\n            JOIN\n            (\n                SELECT secondary2spid AS spid, COUNT(*) AS secondary2_count \n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY secondary2spid\n            ) secondary2_group\n            ON primary_group.spid = secondary2_group.spid\n        )\n        WHERE primary_group.spid = $2; \n    "
+  },
+  "a99f8841477a648e36b15823a637e1dac5075874b4916f319eb5882e4d67fa74": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "TextArray",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n                    UPDATE network_monitoring_users as nm_users\n                    SET secondary1_clock_value = tmp.clock\n                    FROM UNNEST($2::text[], $3::int[]) AS tmp(wallet, clock)\n                    WHERE nm_users.wallet = tmp.wallet\n                    AND nm_users.run_id = $1;\n                "
+  },
+  "cde9625ab5b6b0bff681d06a3203242e510d55e71d1f84c0fd6eb55b3ea8f5ea": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "TextArray",
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "\n                    UPDATE network_monitoring_users as nm_users\n                    SET primary_clock_value = tmp.clock\n                    FROM UNNEST($2::text[], $3::int[]) AS tmp(wallet, clock)\n                    WHERE nm_users.wallet = tmp.wallet\n                    AND nm_users.run_id = $1;\n                "
+  },
+  "ddd5ad17051e8b1bf67683c07e0b43692d73be9dd03b7bf0b3d7750ab1c6e928": {
+    "describe": {
+      "columns": [
+        {
+          "name": "wallet",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\n                    SELECT wallet \n                    FROM network_monitoring_users\n                    WHERE run_id = $1\n                    AND secondary1spid = $2\n                    ORDER BY user_id \n                    OFFSET $3\n                    LIMIT $4; \n                "
   }
 }
