@@ -49,14 +49,14 @@ impl DatabaseSettings {
 }
 
 pub enum Environment {
-    Local,
+    Stage,
     Production,
 }
 
 impl Environment {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Environment::Local => "local",
+            Environment::Stage => "stage",
             Environment::Production => "production",
         }
     }
@@ -67,10 +67,10 @@ impl TryFrom<String> for Environment {
 
     fn try_from(s: String) -> Result<Self, Self::Error> {
         match s.to_lowercase().as_str() {
-            "local" => Ok(Self::Local),
+            "stage" => Ok(Self::Stage),
             "production" => Ok(Self::Production),
             other => Err(format!(
-                "{other} is not a supported environment. Use either `local` or `production`",
+                "{other} is not a supported environment. Use either `stage` or `production`",
             )),
         }
     }
@@ -87,7 +87,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
         builder.add_source(config::File::from(configuration_directory.join("base")).required(true));
 
     let environment: Environment = std::env::var("APP_ENVIRONMENT")
-        .unwrap_or_else(|_| "local".into())
+        .unwrap_or_else(|_| "stage".into())
         .try_into()
         .expect("Failed to parse APP_ENVIRONMENT");
 

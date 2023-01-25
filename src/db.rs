@@ -1,3 +1,4 @@
+use secrecy::ExposeSecret;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 
 use crate::configuration::DatabaseSettings;
@@ -10,7 +11,7 @@ pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
 
 pub async fn create_foreign_connection(
     pool: &PgPool,
-    _configuration: &DatabaseSettings,
+    configuration: &DatabaseSettings,
 ) -> Result<(), anyhow::Error> {
     sqlx::query!(
         r#"
@@ -20,20 +21,26 @@ pub async fn create_foreign_connection(
     .execute(pool)
     .await?;
 
-    //     sqlx::query!(r#"
-    //         CREATE SERVER IF NOT EXISTS fdw_server_connection FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname $1, host $2, port $3);
-    //     "#,
-    //     configuration.database_name,
-    //     configuration.host,
-    //     configuration.port,
-    // ).execute(pool).await;
+    sqlx::query(&format!(
+        r#"
+            CREATE SERVER IF NOT EXISTS fdw_server_connection 
+            FOREIGN DATA WRAPPER postgres_fdw 
+            OPTIONS (dbname {}, host {}, port {});
+        "#,
+        configuration.database_name, configuration.host, configuration.port,
+    ))
+    .execute(pool)
+    .await?;
 
-    //     sqlx::query!(r#"
-    //     CREATE USER MAPPING IF NOT EXISTS FOR postgres SERVER fdw_server_connection OPTIONS (user $1, password $2);
-    //     "#,
-    //     configuration.username,
-    //     configuration.password,
-    // ).execute(pool).await;
+    sqlx::query(&format!(r#"
+        CREATE USER MAPPING IF NOT EXISTS FOR postgres 
+        SERVER fdw_server_connection 
+        OPTIONS (user {}, password {});
+        "#,
+        configuration.username,
+        configuration.password.expose_secret(),
+    )
+    ).execute(pool).await?;
 
     sqlx::query!(
         r#"

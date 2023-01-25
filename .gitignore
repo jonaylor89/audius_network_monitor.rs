@@ -4,4 +4,5 @@
 .env.*
 
 configuration/local.yml
+configuration/stage.yml
 configuration/production.yml
