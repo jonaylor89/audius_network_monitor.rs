@@ -25,6 +25,7 @@ pub struct DatabaseSettings {
 }
 
 impl DatabaseSettings {
+    #[must_use]
     pub fn with_db(&self) -> PgConnectOptions {
         let mut options = self.without_db().database(&self.database_name);
 
@@ -32,6 +33,7 @@ impl DatabaseSettings {
         options
     }
 
+    #[must_use]
     pub fn without_db(&self) -> PgConnectOptions {
         let ssl_mode = if self.require_ssl {
             PgSslMode::Require
@@ -54,6 +56,7 @@ pub enum Environment {
 }
 
 impl Environment {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Environment::Stage => "stage",

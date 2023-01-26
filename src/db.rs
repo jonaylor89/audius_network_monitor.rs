@@ -3,6 +3,8 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 
 use crate::configuration::DatabaseSettings;
 
+#[inline]
+#[must_use]
 pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
     PgPoolOptions::new()
         .max_connections(250)
