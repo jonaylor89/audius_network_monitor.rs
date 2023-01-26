@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("{}", run_id);
 
     // Index Content
-    index_content(pool, run_id).await?;
+    index_content(&pool, run_id).await?;
 
     // Generate Metrics
     // generate_metrics(pool, run_id).await?

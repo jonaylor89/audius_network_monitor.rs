@@ -28,8 +28,8 @@ enum ContentNodeError {
 }
 
 #[tracing::instrument(skip(pool))]
-pub async fn index_content(pool: PgPool, run_id: i32) -> Result<(), anyhow::Error> {
-    let content_nodes = vec![ContentNode::default()];
+pub async fn index_content(pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
+    let content_nodes = get_content_nodes(pool, run_id).await?;
 
     let tasks = content_nodes
         .into_iter()
@@ -42,6 +42,20 @@ pub async fn index_content(pool: PgPool, run_id: i32) -> Result<(), anyhow::Erro
     join_all(tasks).await;
 
     Ok(())
+}
+
+#[tracing::instrument(skip(pool))]
+async fn get_content_nodes(pool: &PgPool, run_id: i32) -> Result<Vec<ContentNode>, anyhow::Error> {
+
+    let content_nodes = sqlx::query!(r#"
+        SELECT spid, endpoint
+        FROM network_monitoring_content_nodes
+        WHERE run_id = $1; 
+        "#, 
+        run_id,
+    ).fetch_all(pool).await?;
+
+    Ok(content_nodes)
 }
 
 #[tracing::instrument(skip(pool))]

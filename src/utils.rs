@@ -35,7 +35,10 @@ pub async fn make_request(
         .take(3); // limit to 3 retries
 
     let wallet_batch =
-        Retry::spawn(retry_strategy, async || network_call(url, payload).await).await?;
+        Retry::spawn(
+            retry_strategy, 
+            async || network_call(url, payload).await,
+        ).await?;
 
     Ok(wallet_batch)
 }
