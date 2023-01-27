@@ -16,15 +16,12 @@ async fn main() -> anyhow::Result<()> {
 
     let configuration = configuration::read().expect("Failed to read configuration");
 
-    // Setup DB
     let pool = get_connection_pool(&configuration.database);
     sqlx::migrate!("./migrations").run(&pool).await?;
     create_foreign_connection(&pool, &configuration.foreign_database).await?;
 
-    // Index Discovery
     let run_id = discovery::index(&pool).await?;
 
-    // Index Content
     content::index(&pool, run_id).await?;
 
     metrics::generate(&pool, run_id).await?;
