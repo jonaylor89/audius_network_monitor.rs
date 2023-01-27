@@ -1,9 +1,7 @@
 use audius_network_monitor::{
-    configuration::get_configuration,
-    content::index_content,
+    configuration, content,
     db::{create_foreign_connection, get_connection_pool},
-    discovery::index_discovery,
-    metrics::generate_metrics,
+    discovery, metrics,
     telemetry::{get_subscriber, init_subscriber},
 };
 
@@ -16,7 +14,7 @@ async fn main() -> anyhow::Result<()> {
     );
     init_subscriber(subscriber);
 
-    let configuration = get_configuration().expect("Failed to read configuration");
+    let configuration = configuration::read().expect("Failed to read configuration");
 
     // Setup DB
     let pool = get_connection_pool(&configuration.database);
@@ -24,12 +22,12 @@ async fn main() -> anyhow::Result<()> {
     create_foreign_connection(&pool, &configuration.foreign_database).await?;
 
     // Index Discovery
-    let run_id = index_discovery(&pool).await?;
+    let run_id = discovery::index(&pool).await?;
 
     // Index Content
-    index_content(&pool, run_id).await?;
+    content::index(&pool, run_id).await?;
 
-    generate_metrics(&pool, run_id).await?;
+    metrics::generate(&pool, run_id).await?;
 
     Ok(())
 }

@@ -79,7 +79,7 @@ impl TryFrom<String> for Environment {
     }
 }
 
-pub fn get_configuration() -> Result<Settings, config::ConfigError> {
+pub fn read() -> Result<Settings, config::ConfigError> {
     let mut builder = config::Config::builder();
 
     let base_path = std::env::current_dir().expect("Failed to determine the current directory");
