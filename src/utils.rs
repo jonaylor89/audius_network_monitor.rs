@@ -9,7 +9,7 @@ use tokio_retry::{
 
 use crate::domain::WalletClockPair;
 
-const UNHEALTHY_TIME_RANGE_MS: i32 = 300_000; // 5min
+// const UNHEALTHY_TIME_RANGE_MS: i32 = 300_000; // 5min
 
 #[derive(Debug, Serialize, Deserialize)]
 

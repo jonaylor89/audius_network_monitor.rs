@@ -210,6 +210,32 @@
     },
     "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT download -> 'cid' as cid, $1, 'track', owner_id\n        FROM tracks\n        WHERE download -> 'cid' != 'null'\n        AND is_current = TRUE;\n    "
   },
+  "8ba07fdc1401a2486f0d1e8ebae45577a742f3f59fa08df1b9c1d6f9130cb5d0": {
+    "describe": {
+      "columns": [
+        {
+          "name": "spid",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "endpoint",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        SELECT spid, endpoint\n        FROM network_monitoring_content_nodes\n        WHERE run_id = $1; \n        "
+  },
   "8bef028ac8c2e732b07f15c5b789f859665cc35fc951768ab629f81270c52480": {
     "describe": {
       "columns": [

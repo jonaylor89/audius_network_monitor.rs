@@ -1,8 +1,10 @@
 use audius_network_monitor::{
     configuration::get_configuration,
     content::index_content,
-    db::{get_connection_pool, create_foreign_connection},
-    telemetry::{get_subscriber, init_subscriber}, discovery::index_discovery,
+    db::{create_foreign_connection, get_connection_pool},
+    discovery::index_discovery,
+    metrics::generate_metrics,
+    telemetry::{get_subscriber, init_subscriber},
 };
 
 #[tokio::main]
@@ -27,8 +29,7 @@ async fn main() -> anyhow::Result<()> {
     // Index Content
     index_content(&pool, run_id).await?;
 
-    // Generate Metrics
-    generate_metrics(pool, run_id).await?;
+    generate_metrics(&pool, run_id).await?;
 
     Ok(())
 }

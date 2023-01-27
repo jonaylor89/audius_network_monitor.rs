@@ -58,7 +58,7 @@ async fn get_content_nodes(pool: &PgPool, run_id: i32) -> Result<Vec<ContentNode
     .await?
     .into_iter()
     .map(|row| ContentNode {
-        endpoint: row.endpoint.unwrap_or("".into()),
+        endpoint: row.endpoint.unwrap_or(String::new()),
         spid: row.spid,
     })
     .collect::<Vec<ContentNode>>();
