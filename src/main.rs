@@ -1,5 +1,5 @@
 use audius_network_monitor::{
-    configuration::get_configuration,
+    configuration::{get_configuration, self},
     content::index_content,
     db::{create_foreign_connection, get_connection_pool},
     discovery::index_discovery,
@@ -23,14 +23,10 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!("./migrations").run(&pool).await?;
     create_foreign_connection(&pool, &configuration.foreign_database).await?;
 
-    // Index Discovery
     let run_id = index_discovery(&pool).await?;
-    tracing::info!("{}", run_id);
 
-    // Index Content
     index_content(&pool, run_id).await?;
 
-    // Generate Metrics
     generate_metrics(&pool, run_id).await?;
 
     Ok(())
