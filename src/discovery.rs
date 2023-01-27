@@ -1,8 +1,7 @@
 use sqlx::PgPool;
 
 #[tracing::instrument(skip(pool))]
-pub async fn index_discovery(pool: &PgPool) -> Result<i32, anyhow::Error> {
-    // create new run
+pub async fn index(pool: &PgPool) -> Result<i32, anyhow::Error> {
     let run_id = create_new_run(pool).await?;
 
     delete_old_run_data(pool, run_id).await?;

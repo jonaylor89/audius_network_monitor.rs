@@ -28,7 +28,7 @@ enum ContentNodeError {
 }
 
 #[tracing::instrument(skip(pool))]
-pub async fn index_content(pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
+pub async fn index(pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
     let content_nodes = get_content_nodes(pool, run_id).await?;
 
     let tasks = content_nodes
