@@ -1,5 +1,4 @@
 #![feature(async_closure)]
-#![feature(flt2dec)]
 #![forbid(unsafe_code)]
 #![warn(clippy::pedantic)]
 // #![warn(clippy::restriction)]
