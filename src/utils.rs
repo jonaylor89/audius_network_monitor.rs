@@ -28,16 +28,6 @@ pub struct UnsignedParams {
     pub timestamp: SystemTime,
 }
 
-/// A struct that represents the components of a secp256k1 signature.
-pub struct Signature {
-    /// V component in electrum format with chain-id replay protection.
-    pub v: u64,
-    /// R component of the signature.
-    pub r: H256,
-    /// S component of the signature.
-    pub s: H256,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 struct WalletBatchResponse {
     data: String,
@@ -100,28 +90,16 @@ pub async fn generate_signature_params(
 
     let signature = sign(key, &message_hash)?;
 
-    let v = signature
-        .v
-        .try_into()?;
-
-    let signature_bytes = {
-        let mut bytes = Vec::with_capacity(65);
-        bytes.extend_from_slice(signature.r.as_bytes());
-        bytes.extend_from_slice(signature.s.as_bytes());
-        bytes.push(v);
-        bytes
-    };
-
     let signed_response = SignatureParams {
-        spid: spid,
-        timestamp: timestamp,
-        signature: signature_bytes,
+        spid,
+        timestamp,
+        signature,
     };
 
     Ok(signed_response)
 }
 
-fn sign(key: SecretKey, message: &[u8]) -> Result<Signature, anyhow::Error> {
+fn sign(key: SecretKey, message: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
     let message = Message::from_slice(message)?;
     let (recovery_id, signature) = CONTEXT
         .sign_ecdsa_recoverable(&message, &key)
@@ -134,7 +112,15 @@ fn sign(key: SecretKey, message: &[u8]) -> Result<Signature, anyhow::Error> {
     let r = H256::from_slice(&signature[..32]);
     let s = H256::from_slice(&signature[32..]);
 
-    Ok(Signature { v, r, s })
+    let signature_bytes = {
+        let mut bytes = Vec::with_capacity(65);
+        bytes.extend_from_slice(r.as_bytes());
+        bytes.extend_from_slice(s.as_bytes());
+        bytes.push(v.try_into()?);
+        bytes
+    };
+
+    Ok(signature_bytes)
 }
 
 /// Compute the Keccak-256 hash of input bytes.
