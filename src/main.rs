@@ -22,9 +22,17 @@ async fn main() -> anyhow::Result<()> {
 
     let run_id = discovery::index(&pool).await?;
 
-    content::index(&pool, run_id).await?;
+    content::index(
+        &pool, 
+        run_id,
+        configuration.content,
+    ).await?;
 
-    metrics::generate(&pool, run_id).await?;
+    metrics::generate(
+        &pool, 
+        run_id,
+        configuration.metrics,
+    ).await?;
 
     Ok(())
 }

@@ -1,7 +1,10 @@
-
-use std::collections::HashMap;
-
+use ethereum_types::H256;
+use once_cell::sync::Lazy;
+use secp256k1::{All, Message, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, str::FromStr};
+use std::time::SystemTime;
+use tiny_keccak::{Hasher, Keccak};
 use tokio_retry::{
     strategy::{jitter, ExponentialBackoff},
     Retry,
@@ -10,9 +13,32 @@ use tokio_retry::{
 use crate::domain::WalletClockPair;
 
 // const UNHEALTHY_TIME_RANGE_MS: i32 = 300_000; // 5min
+static CONTEXT: Lazy<Secp256k1<All>> = Lazy::new(Secp256k1::new);
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct SignatureParams {
+    pub spid: u16,
+    pub timestamp: SystemTime,
+    pub signature: Vec<u8>,
+}
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UnsignedParams {
+    pub spid: u16,
+    pub timestamp: SystemTime,
+}
+
+/// A struct that represents the components of a secp256k1 signature.
+pub struct Signature {
+    /// V component in electrum format with chain-id replay protection.
+    pub v: u64,
+    /// R component of the signature.
+    pub r: H256,
+    /// S component of the signature.
+    pub s: H256,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct WalletBatchResponse {
     data: String,
     method: String,
@@ -35,10 +61,7 @@ pub async fn make_request(
         .take(3); // limit to 3 retries
 
     let wallet_batch =
-        Retry::spawn(
-            retry_strategy, 
-            async || network_call(url, payload).await,
-        ).await?;
+        Retry::spawn(retry_strategy, async || network_call(url, payload).await).await?;
 
     Ok(wallet_batch)
 }
@@ -55,4 +78,72 @@ async fn network_call(
     let wallet_batch: Vec<WalletClockPair> = serde_json::from_str(&js.data)?;
 
     Ok(wallet_batch)
+}
+
+pub async fn generate_signature_params(
+    spid: u16,
+    priv_key: String,
+) -> Result<SignatureParams, anyhow::Error> {
+    let timestamp = SystemTime::now();
+    let to_sign_obj = UnsignedParams { spid, timestamp };
+
+    let to_hash_str = serde_json::to_string(&to_sign_obj)?;
+    let to_sign_hash = keccak256(to_hash_str.as_bytes());
+
+    let mut eth_message =
+        format!("\x19Ethereum Signed Message:\n{}", to_sign_hash.len()).into_bytes();
+    eth_message.extend_from_slice(&to_sign_hash);
+
+    let message_hash = keccak256(&eth_message);
+
+    let key = SecretKey::from_str(&priv_key)?;
+
+    let signature = sign(key, &message_hash)
+        .expect("hash is non-zero 32-bytes; qed");
+
+    let v = signature
+        .v
+        .try_into()
+        .expect("signature recovery in electrum notation always fits in a u8");
+
+    let signature_bytes = {
+        let mut bytes = Vec::with_capacity(65);
+        bytes.extend_from_slice(signature.r.as_bytes());
+        bytes.extend_from_slice(signature.s.as_bytes());
+        bytes.push(v);
+        bytes
+    };
+
+    let signed_response = SignatureParams {
+        spid: spid,
+        timestamp: timestamp,
+        signature: signature_bytes,
+    };
+
+    Ok(signed_response)
+}
+
+fn sign(key: SecretKey, message: &[u8]) -> Result<Signature, anyhow::Error> {
+    let message = Message::from_slice(message)?;
+    let (recovery_id, signature) = CONTEXT
+        .sign_ecdsa_recoverable(&message, &key)
+        .serialize_compact();
+
+    let standard_v = recovery_id.to_i32() as u64;
+
+    // convert to 'Electrum' notation.
+    let v = standard_v + 27;
+    let r = H256::from_slice(&signature[..32]);
+    let s = H256::from_slice(&signature[32..]);
+
+    Ok(Signature { v, r, s })
+}
+
+/// Compute the Keccak-256 hash of input bytes.
+fn keccak256(bytes: &[u8]) -> [u8; 32] {
+    let mut output = [0u8; 32];
+    let mut hasher = Keccak::v256();
+    hasher.update(bytes);
+    hasher.finalize(&mut output);
+    output
 }

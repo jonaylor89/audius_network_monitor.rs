@@ -4,6 +4,7 @@ use thiserror::Error;
 use tokio::join;
 
 use crate::{
+    configuration::ContentSettings,
     domain::{ContentNode, WalletClockPair},
     utils::{make_request, UserStatusPayload},
 };
@@ -28,14 +29,25 @@ enum ContentNodeError {
 }
 
 #[tracing::instrument(skip(pool))]
-pub async fn index(pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
+pub async fn index(
+    pool: &PgPool,
+    run_id: i32,
+    config: ContentSettings,
+) -> Result<(), anyhow::Error> {
     let content_nodes = get_content_nodes(pool, run_id).await?;
 
     let tasks = content_nodes
         .into_iter()
-        .map(|cnode| {
+        .filter_map(|cnode| {
+            if config.deregistered_nodes.contains(&cnode.endpoint) {
+                tracing::info!("skipping {} because it is deregistered", cnode.endpoint);
+                return None;
+            }
+
             let pool_clone = pool.clone();
-            tokio::spawn(async move { check_users(pool_clone, run_id, cnode).await })
+            Some(tokio::spawn(async move {
+                check_users(pool_clone, run_id, cnode).await
+            }))
         })
         .collect::<FuturesUnordered<_>>();
 

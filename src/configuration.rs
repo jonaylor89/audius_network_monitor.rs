@@ -9,6 +9,8 @@ use sqlx::ConnectOptions;
 pub struct Settings {
     pub database: DatabaseSettings,
     pub foreign_database: DatabaseSettings,
+    pub content: ContentSettings,
+    pub metrics: MetricsSettings,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
@@ -48,6 +50,22 @@ impl DatabaseSettings {
             .port(self.port)
             .ssl_mode(ssl_mode)
     }
+}
+
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct ContentSettings {
+    pub deregistered_nodes: Vec<String>,
+
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub signature_spid: u16,
+
+    pub delegate_priv_key: Secret<String>,
+}
+
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct MetricsSettings {
+    pub foundation_nodes: Vec<u16>,
+    pub slack_url: String,
 }
 
 pub enum Environment {
