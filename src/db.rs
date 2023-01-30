@@ -35,23 +35,33 @@ pub async fn create_foreign_connection(
     .execute(pool)
     .await?;
 
-    sqlx::query(&format!(r#"
+    sqlx::query(&format!(
+        r#"
         CREATE USER MAPPING IF NOT EXISTS FOR postgres 
         SERVER fdw_server_connection 
         OPTIONS (user '{}', password '{}');
         "#,
         configuration.username,
         configuration.password.expose_secret(),
-    )
-    ).execute(pool).await?;
+    ))
+    .execute(pool)
+    .await?;
 
-    sqlx::query!(r#"
+    sqlx::query!(
+        r#"
         DROP SCHEMA IF EXISTS discovery CASCADE;
-    "#).execute(pool).await?;
+    "#
+    )
+    .execute(pool)
+    .await?;
 
-    sqlx::query!(r#"
+    sqlx::query!(
+        r#"
         CREATE SCHEMA discovery;
-    "#).execute(pool).await?;
+    "#
+    )
+    .execute(pool)
+    .await?;
 
     sqlx::query!(
         r#"

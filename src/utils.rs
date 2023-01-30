@@ -2,8 +2,8 @@ use ethereum_types::H256;
 use once_cell::sync::Lazy;
 use secp256k1::{All, Message, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, str::FromStr};
 use std::time::SystemTime;
+use std::{collections::HashMap, str::FromStr};
 use tiny_keccak::{Hasher, Keccak};
 use tokio_retry::{
     strategy::{jitter, ExponentialBackoff},
@@ -91,20 +91,18 @@ pub async fn generate_signature_params(
     let to_sign_hash = keccak256(to_hash_str.as_bytes());
 
     let mut eth_message =
-        format!("\x19Ethereum Signed Message:\n{}", to_sign_hash.len()).into_bytes();
+        format!("\x19Ethereum Signed Message:\n{}", to_sign_hash.len(),).into_bytes();
     eth_message.extend_from_slice(&to_sign_hash);
 
     let message_hash = keccak256(&eth_message);
 
     let key = SecretKey::from_str(&priv_key)?;
 
-    let signature = sign(key, &message_hash)
-        .expect("hash is non-zero 32-bytes; qed");
+    let signature = sign(key, &message_hash)?;
 
     let v = signature
         .v
-        .try_into()
-        .expect("signature recovery in electrum notation always fits in a u8");
+        .try_into()?;
 
     let signature_bytes = {
         let mut bytes = Vec::with_capacity(65);
