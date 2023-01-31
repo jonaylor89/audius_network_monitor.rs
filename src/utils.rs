@@ -100,6 +100,7 @@ pub async fn generate_signature_params(
 }
 
 fn sign(key: SecretKey, message: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
+    
     let message = Message::from_slice(message)?;
     let (recovery_id, signature) = CONTEXT
         .sign_ecdsa_recoverable(&message, &key)
