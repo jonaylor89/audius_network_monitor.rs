@@ -17,7 +17,7 @@ if ! [ -x "$(command -v sqlx)" ]; then
 fi
 
 DB_USER=${POSTGRES_USER:=postgres}
-DB_PASSWORD="${POSTGRES_PASSWORD:=password}"
+DB_PASSWORD="${POSTGRES_PASSWORD:=trust}"
 
 DB_NAME="${POSTGRES_DB:=audius_network_monitoring}"
 

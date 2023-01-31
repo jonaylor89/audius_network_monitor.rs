@@ -2,7 +2,7 @@ database:
   host: "localhost"
   port: 5432
   username: "postgres"
-  password: "password" 
+  password: "trust" 
   database_name: "audius_network_monitoring"
 foreign_database:
   host: "localhost"

@@ -1,8 +1,10 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1.66.1 as chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.67 as chef
 
 WORKDIR /app
 
 RUN apt update && apt install lld clang -y
+
+RUN rustup install nightly
 
 # -----------------------------
 
@@ -10,7 +12,7 @@ FROM chef AS planner
 
 COPY . .
 
-RUN cargo chef prepare --recipe-path recipe.json
+RUN cargo +nightly chef prepare --recipe-path recipe.json
 
 # -----------------------------
 
@@ -18,14 +20,14 @@ FROM chef AS builder
 
 COPY --from=planner /app/recipe.json recipe.json
 
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN cargo +nightly chef cook --release --recipe-path recipe.json
 
 COPY . . 
 
 
 ENV SQLX_OFFLINE true
 
-RUN cargo build --release --bin audius_network_monitor
+RUN cargo +nightly build --release --bin audius_network_monitor
 
 # ----------------------------
 
