@@ -9,7 +9,7 @@ use crate::{configuration::MetricsSettings, prometheus::USER_COUNT_GAUGE};
 #[tracing::instrument(skip(pool))]
 pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> anyhow::Result<()> {
     // GENERATE METRICS
-    let run_time_start = get_run_time_start(pool, run_id).await?;
+    let run_time_start = get_run_start_time(pool, run_id).await?;
     let user_count = get_user_count(pool, run_id).await?;
     let all_user_count = get_all_user_count(pool, run_id).await?;
     let primary_user_count = get_primary_user_count(pool, run_id).await?;
@@ -54,13 +54,37 @@ pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> an
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_run_time_start(pool: &PgPool, run_id: i32) -> anyhow::Result<DateTime<Utc>> {
-    Ok(Utc::now())
+async fn get_run_start_time(pool: &PgPool, run_id: i32) -> anyhow::Result<DateTime<Utc>> {
+    let run_start_time = sqlx::query!(
+        r#"
+    SELECT created_at
+    FROM 
+        network_monitoring_index_blocks
+    WHERE
+        run_id = $1
+    "#,
+        run_id
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(run_start_time)
 }
 
 #[tracing::instrument(skip(pool))]
 async fn get_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
-    Ok(0)
+    let user_count = sqlx::query!(
+        r#"
+    SELECT COUNT(*) as user_count
+    FROM network_monitoring_users
+    WHERE run_id = $1
+    "#,
+        run_id
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(user_count)
 }
 
 #[tracing::instrument(skip(pool))]
