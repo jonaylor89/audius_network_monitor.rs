@@ -45,7 +45,7 @@ pub struct UserStatusPayload {
 pub async fn make_request(
     url: &str,
     payload: &UserStatusPayload,
-) -> Result<Vec<WalletClockPair>, anyhow::Error> {
+) -> anyhow::Result<Vec<WalletClockPair>> {
     let retry_strategy = ExponentialBackoff::from_millis(10)
         .map(jitter) // add jitter to delays
         .take(3); // limit to 3 retries
@@ -59,7 +59,7 @@ pub async fn make_request(
 async fn network_call(
     url: &str,
     payload: &UserStatusPayload,
-) -> Result<Vec<WalletClockPair>, anyhow::Error> {
+) -> anyhow::Result<Vec<WalletClockPair>> {
     let client = reqwest::Client::new();
     let res = client.post(url).json(payload).send().await?;
 
@@ -73,7 +73,7 @@ async fn network_call(
 pub async fn generate_signature_params(
     spid: u16,
     priv_key: String,
-) -> Result<SignatureParams, anyhow::Error> {
+) -> anyhow::Result<SignatureParams> {
     let timestamp = SystemTime::now();
     let to_sign_obj = UnsignedParams { spid, timestamp };
 
@@ -99,7 +99,7 @@ pub async fn generate_signature_params(
     Ok(signed_response)
 }
 
-fn sign(key: SecretKey, message: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
+fn sign(key: SecretKey, message: &[u8]) -> anyhow::Result<Vec<u8>> {
     
     let message = Message::from_slice(message)?;
     let (recovery_id, signature) = CONTEXT

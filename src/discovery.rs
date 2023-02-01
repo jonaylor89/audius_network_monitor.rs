@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use crate::domain::ContentNode;
 
 #[tracing::instrument(skip(pool))]
-pub async fn index(pool: &PgPool) -> Result<i32, anyhow::Error> {
+pub async fn index(pool: &PgPool) -> anyhow::Result<i32> {
     let run_id = create_new_run(pool).await?;
 
     delete_old_run_data(pool, run_id).await?;
@@ -18,7 +18,7 @@ pub async fn index(pool: &PgPool) -> Result<i32, anyhow::Error> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn create_new_run(pool: &PgPool) -> Result<i32, anyhow::Error> {
+async fn create_new_run(pool: &PgPool) -> anyhow::Result<i32> {
     // get latest block number
     let latest_block_number = sqlx::query!(
         r#"
@@ -68,7 +68,7 @@ async fn create_new_run(pool: &PgPool) -> Result<i32, anyhow::Error> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn delete_old_run_data(pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
+async fn delete_old_run_data(pool: &PgPool, run_id: i32) -> anyhow::Result<()> {
     // Number of runs to keep in the DB
     let latest_runs_to_keep = 3;
     let to_delete = run_id - latest_runs_to_keep;
@@ -92,7 +92,7 @@ async fn delete_old_run_data(pool: &PgPool, run_id: i32) -> Result<(), anyhow::E
 }
 
 #[tracing::instrument(skip(pool))]
-async fn import_users(pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
+async fn import_users(pool: &PgPool, run_id: i32) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
         INSERT INTO network_monitoring_users (
@@ -124,7 +124,7 @@ async fn import_users(pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn import_content_nodes(pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
+async fn import_content_nodes(pool: &PgPool, run_id: i32) -> anyhow::Result<()> {
     let content_nodes = vec![
         ContentNode {
             spid: 6,
@@ -182,7 +182,7 @@ async fn import_content_nodes(pool: &PgPool, run_id: i32) -> Result<(), anyhow::
 }
 
 #[tracing::instrument(skip(pool))]
-async fn import_cids(pool: &PgPool, run_id: i32) -> Result<(), anyhow::Error> {
+async fn import_cids(pool: &PgPool, run_id: i32) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
         INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)

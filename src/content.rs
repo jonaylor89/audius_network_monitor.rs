@@ -33,7 +33,7 @@ pub async fn index(
     pool: &PgPool,
     run_id: i32,
     config: ContentSettings,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     let content_nodes = get_content_nodes(pool, run_id).await?;
 
     let tasks = content_nodes
@@ -57,7 +57,7 @@ pub async fn index(
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_content_nodes(pool: &PgPool, run_id: i32) -> Result<Vec<ContentNode>, anyhow::Error> {
+async fn get_content_nodes(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<ContentNode>> {
     let content_nodes = sqlx::query!(
         r#"
         SELECT spid, endpoint
@@ -79,7 +79,7 @@ async fn get_content_nodes(pool: &PgPool, run_id: i32) -> Result<Vec<ContentNode
 }
 
 #[tracing::instrument(skip(pool))]
-async fn check_users(pool: PgPool, run_id: i32, cnode: ContentNode) -> Result<(), anyhow::Error> {
+async fn check_users(pool: PgPool, run_id: i32, cnode: ContentNode) -> anyhow::Result<()> {
     let ContentNode { spid, endpoint } = cnode;
     let (primary_count, secondary1_count, secondary2_count) =
         get_user_counts(&pool, run_id, spid).await?;
@@ -181,7 +181,7 @@ async fn check_replica(
     count: i64,
     spid: i32,
     endpoint: &str,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     for offset in (0..count).step_by(BATCH_SIZE) {
         let wallet_batch = get_batch(replica, pool, run_id, spid, offset).await?;
         if wallet_batch.is_empty() {
@@ -225,7 +225,7 @@ async fn get_batch(
     run_id: i32,
     spid: i32,
     offset: i64,
-) -> Result<Vec<String>, anyhow::Error> {
+) -> anyhow::Result<Vec<String>> {
     let batch = match replica {
         Replica::Primary => sqlx::query!(
             r#"
@@ -299,7 +299,7 @@ async fn save_batch(
     run_id: i32,
     spid: i32,
     clock_values: &Vec<WalletClockPair>,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     let mini_batch_size = 500;
     let count = clock_values.len();
 

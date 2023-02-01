@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use prometheus::labels;
 use sqlx::{
     types::chrono::{DateTime, Utc},
@@ -5,6 +7,11 @@ use sqlx::{
 };
 
 use crate::{configuration::MetricsSettings, prometheus::USER_COUNT_GAUGE};
+
+struct CNodeCount {
+    endpoint: String,
+    count: i64,
+}
 
 #[tracing::instrument(skip(pool))]
 pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> anyhow::Result<()> {
@@ -88,8 +95,31 @@ async fn get_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_all_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
-    Ok(0)
+async fn get_all_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CNodeCount>> {
+    let all_user_count: Vec<CNodeCount> = sqlx::query_as!(
+        CNodeCount,
+        r#"
+    SELECT joined.endpoint, COUNT(*) 
+        FROM (
+            (SELECT * FROM network_monitoring_content_nodes WHERE run_id = :run_id) AS cnodes
+        JOIN
+        (
+            SELECT user_id, unnest(string_to_array(replica_set, ',')) AS user_endpoint 
+            FROM network_monitoring_users
+            WHERE run_id = :run_id
+        ) as unnested_users
+        ON
+            cnodes.endpoint = unnested_users.user_endpoint
+        ) AS joined
+        GROUP BY 
+            joined.endpoint; 
+    "#,
+        run_id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(all_user_count)
 }
 
 #[tracing::instrument(skip(pool))]
