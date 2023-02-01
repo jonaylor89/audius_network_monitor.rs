@@ -10,6 +10,6 @@ pub mod db;
 pub mod discovery;
 pub mod domain;
 pub mod metrics;
+pub mod prometheus;
 pub mod telemetry;
 pub mod utils;
-pub mod prometheus;

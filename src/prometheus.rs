@@ -10,5 +10,4 @@ lazy_static! {
         &["run_id"]
     )
     .unwrap();
-
 }
