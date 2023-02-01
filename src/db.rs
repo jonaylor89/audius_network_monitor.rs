@@ -12,6 +12,7 @@ pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
         .connect_lazy_with(configuration.with_db())
 }
 
+#[tracing::instrument(skip(pool))]
 pub async fn create_foreign_connection(
     pool: &PgPool,
     configuration: &DatabaseSettings,

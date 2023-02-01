@@ -66,7 +66,7 @@ async fn get_content_nodes(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<Con
     .await?
     .into_iter()
     .map(|row| ContentNode {
-        endpoint: row.endpoint.unwrap_or(String::new()),
+        endpoint: row.endpoint,
         spid: row.spid,
     })
     .collect::<Vec<ContentNode>>();
@@ -241,7 +241,7 @@ async fn get_batch(
         .fetch_all(pool)
         .await?
         .into_iter()
-        .map(|row| row.wallet.unwrap_or_default())
+        .map(|row| row.wallet)
         .collect::<Vec<String>>(),
         Replica::Secondary1 => sqlx::query!(
             r#"
@@ -261,7 +261,7 @@ async fn get_batch(
         .fetch_all(pool)
         .await?
         .into_iter()
-        .map(|row| row.wallet.unwrap_or_default())
+        .map(|row| row.wallet)
         .collect::<Vec<String>>(),
         Replica::Secondary2 => sqlx::query!(
             r#"
@@ -281,7 +281,7 @@ async fn get_batch(
         .fetch_all(pool)
         .await?
         .into_iter()
-        .map(|row| row.wallet.unwrap_or_default())
+        .map(|row| row.wallet)
         .collect::<Vec<String>>(),
     };
 

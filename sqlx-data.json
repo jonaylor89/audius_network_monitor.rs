@@ -10,7 +10,7 @@
         }
       ],
       "nullable": [
-        true
+        false
       ],
       "parameters": {
         "Left": [
@@ -33,7 +33,7 @@
         }
       ],
       "nullable": [
-        true
+        false
       ],
       "parameters": {
         "Left": [
@@ -152,6 +152,32 @@
     },
     "query": "\n        INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)\n        SELECT metadata_multihash, $1, 'metadata', user_id\n        FROM discovery.users\n        WHERE metadata_multihash IS NOT NULL\n        AND is_current = TRUE;\n    "
   },
+  "59b756254842a4c3a0892e13903dd4e3d8ef7b742e14deb7501b8fe4d9656f7b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "endpoint",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "count",
+          "ordinal": 1,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            SELECT \n            joined.endpoint AS endpoint, COUNT(*) AS count\n        FROM (\n            (SELECT * FROM network_monitoring_users WHERE run_id = $1) AS current_users\n        JOIN\n            (SELECT * FROM network_monitoring_content_nodes WHERE run_id = $1) AS cnodes\n        ON\n            current_users.primaryspid = cnodes.spid\n        ) AS joined\n        GROUP BY \n            joined.endpoint \n    "
+  },
   "5da0708585db842b9c0a7ddbbd5be748969455f2a425363695287cdfc7bdd136": {
     "describe": {
       "columns": [],
@@ -194,6 +220,26 @@
     },
     "query": "\n        INSERT INTO network_monitoring_users (\n            user_id,\n            wallet,\n            replica_set,\n            run_id,\n            primarySpID,\n            secondary1SpID,\n            secondary2SpID\n        )\n        SELECT\n            user_id,\n            wallet,\n            creator_node_endpoint as replica_set,\n            $1,\n            primary_id as primarySpID,\n            secondary_ids[1] as secondary1SpID,\n            secondary_ids[2] as secondary2SpID\n        FROM discovery.users\n        WHERE is_current = TRUE;\n    "
   },
+  "79fdfa29a887c40001918e142a356b38fea3dcef9a78c26c7b218cfc430fa40d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "created_at",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n    SELECT created_at\n    FROM \n        network_monitoring_index_blocks\n    WHERE\n        run_id = $1\n    "
+  },
   "7ada7305aa2ccbe5c1eac6011c54b50a1b27be328383b4df696f38dae0cbd3eb": {
     "describe": {
       "columns": [],
@@ -203,6 +249,32 @@
       }
     },
     "query": "\n        CREATE EXTENSION IF NOT EXISTS postgres_fdw;\n    "
+  },
+  "86ad8b31216cdbdf53cb74b2924d6a0b45a130b1a8672b7c803350d53745886a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "endpoint",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "count",
+          "ordinal": 1,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        SELECT joined.endpoint AS endpoint, COUNT(*) AS count\n        FROM (\n            (SELECT * FROM network_monitoring_content_nodes WHERE run_id = $1) AS cnodes\n        JOIN\n        (\n            SELECT user_id, unnest(string_to_array(replica_set, ',')) AS user_endpoint \n            FROM network_monitoring_users\n            WHERE run_id = $1\n        ) as unnested_users\n        ON\n            cnodes.endpoint = unnested_users.user_endpoint\n        ) AS joined\n        GROUP BY \n            joined.endpoint; \n    "
   },
   "8ba07fdc1401a2486f0d1e8ebae45577a742f3f59fa08df1b9c1d6f9130cb5d0": {
     "describe": {
@@ -220,7 +292,7 @@
       ],
       "nullable": [
         false,
-        true
+        false
       ],
       "parameters": {
         "Left": [
@@ -255,7 +327,7 @@
         }
       ],
       "nullable": [
-        true,
+        false,
         null,
         null,
         null
@@ -268,6 +340,26 @@
       }
     },
     "query": "\n        SELECT primary_group.spid as spid, primary_count, secondary1_count, secondary2_count\n        FROM (\n            (\n                SELECT primaryspid AS spid, COUNT(*) AS primary_count\n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY primaryspid\n            ) as primary_group\n            JOIN \n            (\n                SELECT secondary1spid AS spid, COUNT(*) AS secondary1_count \n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY secondary1spid\n            ) secondary1_group\n            ON primary_group.spid = secondary1_group.spid\n            JOIN\n            (\n                SELECT secondary2spid AS spid, COUNT(*) AS secondary2_count \n                FROM network_monitoring_users \n                WHERE run_id = $1\n                GROUP BY secondary2spid\n            ) secondary2_group\n            ON primary_group.spid = secondary2_group.spid\n        )\n        WHERE primary_group.spid = $2; \n    "
+  },
+  "98e1d6d06069d3dc7095b9864960d0bbc150b961642a239accb2182dd2feb918": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_count",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n    SELECT COUNT(*) as user_count\n    FROM network_monitoring_users\n    WHERE run_id = $1\n    "
   },
   "a99f8841477a648e36b15823a637e1dac5075874b4916f319eb5882e4d67fa74": {
     "describe": {
@@ -365,7 +457,7 @@
         }
       ],
       "nullable": [
-        true
+        false
       ],
       "parameters": {
         "Left": [
