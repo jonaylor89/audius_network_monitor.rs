@@ -24,7 +24,7 @@ pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> an
     let users_with_null_primary_clock = get_users_with_null_primary_clock(pool, run_id).await?;
     let users_with_unhealthy_replica = get_users_with_unhealthy_replica(pool, run_id).await?;
     let users_with_all_foundation_node_replica_set =
-        get_users_with_all_foundation_node_replica_set(pool, run_id, &config.foundation_nodes)
+        get_users_with_entire_replica_in_spid_set_count(pool, run_id, &config.foundation_nodes)
             .await?;
 
     let users_with_no_foundation_node_replica_set_count =
@@ -71,7 +71,8 @@ async fn get_run_start_time(pool: &PgPool, run_id: i32) -> anyhow::Result<DateTi
         run_id
     )
     .fetch_one(pool)
-    .await?;
+    .await?
+    .created_at;
 
     Ok(run_start_time)
 }
@@ -87,7 +88,8 @@ async fn get_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
         run_id
     )
     .fetch_one(pool)
-    .await?;
+    .await?
+    .user_count;
 
     Ok(user_count)
 }
@@ -97,7 +99,7 @@ async fn get_all_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CN
     let all_user_count: Vec<CNodeCount> = sqlx::query_as!(
         CNodeCount,
         r#"
-        SELECT joined.endpoint, COUNT(*) 
+        SELECT joined.endpoint AS endpoint, COUNT(*) AS count
         FROM (
             (SELECT * FROM network_monitoring_content_nodes WHERE run_id = $1) AS cnodes
         JOIN
@@ -126,7 +128,7 @@ async fn get_primary_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i6
         CNodeCount,
         r#"
             SELECT 
-            joined.endpoint, COUNT(*) 
+            joined.endpoint AS endpoint, COUNT(*) AS count
         FROM (
             (SELECT * FROM network_monitoring_users WHERE run_id = $1) AS current_users
         JOIN
@@ -147,36 +149,156 @@ async fn get_primary_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i6
 
 #[tracing::instrument(skip(pool))]
 async fn get_fully_synced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
-    Ok(0)
+    let fully_synced_users_count = sqlx::query!(
+        r#"
+    SELECT COUNT(*) as user_count
+    FROM network_monitoring_users
+    WHERE
+        run_id = $1
+    AND 
+        primary_clock_value IS NOT NULL
+    AND 
+        primary_clock_value != -2
+    AND
+        primary_clock_value = secondary1_clock_value
+    AND
+        secondary1_clock_value = secondary2_clock_value; 
+    "#,
+        run_id
+    )
+    .fetch_one(pool)
+    .await?
+    .user_count;
+
+    Ok(fully_synced_users_count)
 }
 
 #[tracing::instrument(skip(pool))]
 async fn get_partially_synced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
-    Ok(0)
+    let partially_synced_users_count = sqlx::query!(
+        r#"
+    ELECT COUNT(*) as user_count
+    FROM network_monitoring_users
+    WHERE 
+        run_id = $1
+    AND 
+        primary_clock_value IS NOT NULL
+    AND 
+        primary_clock_value != -2
+    AND ( 
+        primary_clock_value = secondary1_clock_value
+        OR
+        primary_clock_value = secondary2_clock_value
+    )
+    AND 
+        secondary1_clock_value != secondary2_clock_value; 
+    "#,
+        run_id
+    )
+    .fetch_one(pool)
+    .await?
+    .user_count;
+
+    Ok(partially_synced_users_count)
 }
 
 #[tracing::instrument(skip(pool))]
 async fn get_unsynced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
-    Ok(0)
+    let unsynced_users_count = sqlx::query!(
+        r#"
+    SELECT COUNT(*) as user_count
+    FROM network_monitoring_users
+    WHERE 
+        run_id = $1
+    AND 
+        primary_clock_value IS NOT NULL
+    AND 
+        primary_clock_value != -2
+    AND 
+        primary_clock_value != secondary1_clock_value
+    AND
+        primary_clock_value != secondary2_clock_value; 
+    "#,
+        run_id
+    )
+    .fetch_one(pool)
+    .await?
+    .user_count;
+
+    Ok(unsynced_users_count)
 }
 
 #[tracing::instrument(skip(pool))]
 async fn get_users_with_null_primary_clock(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
-    Ok(0)
+    let users_with_null_primary_clock = sqlx::query!(
+        r#"
+    SELECT COUNT(*) as user_count
+    FROM network_monitoring_users
+    WHERE 
+        run_id = $1
+    AND 
+        primary_clock_value IS NULL; 
+    "#,
+        run_id
+    )
+    .fetch_one(pool)
+    .await?
+    .user_count;
+
+    Ok(users_with_null_primary_clock)
 }
 
 #[tracing::instrument(skip(pool))]
 async fn get_users_with_unhealthy_replica(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
-    Ok(0)
+    let users_with_unhealthy_replica = sqlx::query!(
+        r#"
+    SELECT COUNT(*) as user_count
+    FROM network_monitoring_users
+    WHERE 
+        run_id = :run_id
+    AND (
+        primary_clock_value = -2
+        OR
+        secondary1_clock_value = -2
+        OR 
+        secondary2_clock_value = -2;
+    "#,
+        run_id
+    )
+    .fetch_one(pool)
+    .await?
+    .user_count;
+
+    Ok(users_with_unhealthy_replica)
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_users_with_all_foundation_node_replica_set(
+async fn get_users_with_entire_replica_in_spid_set_count(
     pool: &PgPool,
     run_id: i32,
     foundation_nodes: &Vec<u16>,
 ) -> anyhow::Result<i64> {
-    Ok(0)
+    let users_with_all_foundation_node_replica_set = sqlx::query!(
+        r#"
+    SELECT COUNT(*) as user_count
+    FROM network_monitoring_users
+    WHERE
+        run_id = :run_id
+    AND 
+        primaryspid = ANY( $2 )
+    AND
+        secondary1spid = ANY( $2 )
+    AND 
+        secondary2spid = ANY( $2 ); 
+    "#,
+        run_id,
+        foundation_nodes 
+    )
+    .fetch_one(pool)
+    .await?
+    .user_count;
+
+    Ok(users_with_all_foundation_node_replica_set)
 }
 
 #[tracing::instrument(skip(pool))]
