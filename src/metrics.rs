@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use prometheus::labels;
 use sqlx::{
     types::chrono::{DateTime, Utc},
@@ -99,14 +97,14 @@ async fn get_all_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CN
     let all_user_count: Vec<CNodeCount> = sqlx::query_as!(
         CNodeCount,
         r#"
-    SELECT joined.endpoint, COUNT(*) 
+        SELECT joined.endpoint, COUNT(*) 
         FROM (
-            (SELECT * FROM network_monitoring_content_nodes WHERE run_id = :run_id) AS cnodes
+            (SELECT * FROM network_monitoring_content_nodes WHERE run_id = $1) AS cnodes
         JOIN
         (
             SELECT user_id, unnest(string_to_array(replica_set, ',')) AS user_endpoint 
             FROM network_monitoring_users
-            WHERE run_id = :run_id
+            WHERE run_id = $1
         ) as unnested_users
         ON
             cnodes.endpoint = unnested_users.user_endpoint
@@ -124,6 +122,26 @@ async fn get_all_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CN
 
 #[tracing::instrument(skip(pool))]
 async fn get_primary_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
+    let primary_user_count = sqlx::query_as!(
+        CNodeCount,
+        r#"
+            SELECT 
+            joined.endpoint, COUNT(*) 
+        FROM (
+            (SELECT * FROM network_monitoring_users WHERE run_id = $1) AS current_users
+        JOIN
+            (SELECT * FROM network_monitoring_content_nodes WHERE run_id = $1) AS cnodes
+        ON
+            current_users.primaryspid = cnodes.spid
+        ) AS joined
+        GROUP BY 
+            joined.endpoint 
+    "#,
+        run_id
+    )
+    .fetch_all(pool)
+    .await?;
+
     Ok(0)
 }
 
