@@ -196,7 +196,7 @@ async fn check_replica(
     Ok(())
 }
 
-#[tracing::instrument]
+#[tracing::instrument(skip(wallet_batch))]
 async fn get_user_clock_values(
     endpoint: &str,
     wallet_batch: Vec<String>,
@@ -292,7 +292,7 @@ async fn get_batch(
     Ok(batch)
 }
 
-#[tracing::instrument(skip(pool))]
+#[tracing::instrument(skip(pool, clock_values))]
 async fn save_batch(
     replica: &Replica,
     pool: &PgPool,

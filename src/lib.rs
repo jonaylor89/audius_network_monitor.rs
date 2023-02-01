@@ -12,3 +12,4 @@ pub mod domain;
 pub mod metrics;
 pub mod telemetry;
 pub mod utils;
+pub mod prometheus;

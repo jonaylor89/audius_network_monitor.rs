@@ -65,6 +65,7 @@ pub struct ContentSettings {
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct MetricsSettings {
     pub foundation_nodes: Vec<u16>,
+    pub push_gateway: String,
     pub slack_url: String,
 }
 
