@@ -6,9 +6,9 @@ use sqlx::{
 
 use crate::{configuration::MetricsSettings, prometheus::USER_COUNT_GAUGE};
 
-struct CNodeCount {
-    endpoint: String,
-    count: i64,
+pub struct CNodeCount {
+    pub endpoint: String,
+    pub count: i64,
 }
 
 #[tracing::instrument(skip(pool))]
@@ -89,16 +89,16 @@ async fn get_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
     )
     .fetch_one(pool)
     .await?
-    .user_count;
+    .user_count
+    .unwrap_or(0);
 
     Ok(user_count)
 }
 
 #[tracing::instrument(skip(pool))]
 async fn get_all_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CNodeCount>> {
-    let all_user_count: Vec<CNodeCount> = sqlx::query_as!(
-        CNodeCount,
-        r#"
+
+    let all_user_count: Vec<CNodeCount> = sqlx::query!(r#"
         SELECT joined.endpoint AS endpoint, COUNT(*) AS count
         FROM (
             (SELECT * FROM network_monitoring_content_nodes WHERE run_id = $1) AS cnodes
@@ -117,15 +117,20 @@ async fn get_all_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CN
         run_id
     )
     .fetch_all(pool)
-    .await?;
+    .await?
+    .into_iter()
+    .map(|row| CNodeCount {
+        endpoint: row.endpoint,
+        count: row.count.unwrap_or(0),
+    })
+    .collect::<Vec<CNodeCount>>();
 
     Ok(all_user_count)
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_primary_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
-    let primary_user_count = sqlx::query_as!(
-        CNodeCount,
+async fn get_primary_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CNodeCount>> {
+    let primary_user_count: Vec<CNodeCount> = sqlx::query!(
         r#"
             SELECT 
             joined.endpoint AS endpoint, COUNT(*) AS count
@@ -142,9 +147,15 @@ async fn get_primary_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i6
         run_id
     )
     .fetch_all(pool)
-    .await?;
+    .await?
+    .into_iter()
+    .map(|row| CNodeCount {
+        endpoint: row.endpoint,
+        count: row.count.unwrap_or(0),
+    })
+    .collect::<Vec<CNodeCount>>();
 
-    Ok(0)
+    Ok(primary_user_count)
 }
 
 #[tracing::instrument(skip(pool))]
@@ -255,7 +266,7 @@ async fn get_users_with_unhealthy_replica(pool: &PgPool, run_id: i32) -> anyhow:
     SELECT COUNT(*) as user_count
     FROM network_monitoring_users
     WHERE 
-        run_id = :run_id
+        run_id = $1
     AND (
         primary_clock_value = -2
         OR
