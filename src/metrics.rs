@@ -1,6 +1,10 @@
+use num_traits::cast::ToPrimitive;
 use prometheus::labels;
 use sqlx::{
-    types::chrono::{DateTime, Utc},
+    types::{
+        chrono::{DateTime, Utc},
+        BigDecimal,
+    },
     PgPool,
 };
 
@@ -12,7 +16,7 @@ pub struct CNodeCount {
 }
 
 pub struct CNodeSyncedStatus {
-    pub spid: i64,
+    pub spid: i32,
     pub endpoint: String,
     pub fully_synced_count: i64,
     pub partially_synced_count: i64,
@@ -187,7 +191,8 @@ async fn get_fully_synced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Res
     )
     .fetch_one(pool)
     .await?
-    .user_count;
+    .user_count
+    .unwrap_or(0);
 
     Ok(fully_synced_users_count)
 }
@@ -196,7 +201,7 @@ async fn get_fully_synced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Res
 async fn get_partially_synced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
     let partially_synced_users_count = sqlx::query!(
         r#"
-    ELECT COUNT(*) as user_count
+    SELECT COUNT(*) as user_count
     FROM network_monitoring_users
     WHERE 
         run_id = $1
@@ -216,7 +221,8 @@ async fn get_partially_synced_users_count(pool: &PgPool, run_id: i32) -> anyhow:
     )
     .fetch_one(pool)
     .await?
-    .user_count;
+    .user_count
+    .unwrap_or(0);
 
     Ok(partially_synced_users_count)
 }
@@ -242,7 +248,8 @@ async fn get_unsynced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Result<
     )
     .fetch_one(pool)
     .await?
-    .user_count;
+    .user_count
+    .unwrap_or(0);
 
     Ok(unsynced_users_count)
 }
@@ -262,7 +269,8 @@ async fn get_users_with_null_primary_clock(pool: &PgPool, run_id: i32) -> anyhow
     )
     .fetch_one(pool)
     .await?
-    .user_count;
+    .user_count
+    .unwrap_or(0);
 
     Ok(users_with_null_primary_clock)
 }
@@ -280,13 +288,15 @@ async fn get_users_with_unhealthy_replica(pool: &PgPool, run_id: i32) -> anyhow:
         OR
         secondary1_clock_value = -2
         OR 
-        secondary2_clock_value = -2;
+        secondary2_clock_value = -2
+    );
     "#,
         run_id
     )
     .fetch_one(pool)
     .await?
-    .user_count;
+    .user_count
+    .unwrap_or(0);
 
     Ok(users_with_unhealthy_replica)
 }
@@ -295,7 +305,7 @@ async fn get_users_with_unhealthy_replica(pool: &PgPool, run_id: i32) -> anyhow:
 async fn get_users_with_entire_replica_in_spid_set_count(
     pool: &PgPool,
     run_id: i32,
-    foundation_nodes: &Vec<u16>,
+    foundation_nodes: &Vec<i32>,
 ) -> anyhow::Result<i64> {
     let users_with_all_foundation_node_replica_set = sqlx::query!(
         r#"
@@ -311,11 +321,12 @@ async fn get_users_with_entire_replica_in_spid_set_count(
         secondary2spid = ANY( $2 ); 
     "#,
         run_id,
-        foundation_nodes
+        foundation_nodes.as_slice()
     )
     .fetch_one(pool)
     .await?
-    .user_count;
+    .user_count
+    .unwrap_or(0);
 
     Ok(users_with_all_foundation_node_replica_set)
 }
@@ -324,7 +335,7 @@ async fn get_users_with_entire_replica_in_spid_set_count(
 async fn get_users_with_entire_replica_set_not_in_spid_set_count(
     pool: &PgPool,
     run_id: i32,
-    spids: &Vec<u16>,
+    spids: &Vec<i32>,
 ) -> anyhow::Result<i64> {
     let users_with_entire_replica_set_not_in_spid_set = sqlx::query!(
         r#"
@@ -340,17 +351,21 @@ async fn get_users_with_entire_replica_set_not_in_spid_set_count(
             secondary2spid != ALL( $2 );
    "#,
         run_id,
-        foundation_nodes,
+        spids,
     )
     .fetch_one(pool)
     .await?
-    .user_count;
+    .user_count
+    .unwrap_or(0);
 
     Ok(users_with_entire_replica_set_not_in_spid_set)
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_users_status_by_primary(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
+async fn get_users_status_by_primary(
+    pool: &PgPool,
+    run_id: i32,
+) -> anyhow::Result<Vec<CNodeSyncedStatus>> {
     let users_status_by_primary = sqlx::query!(r#"
         SELECT fully_synced.spid, cnodes.endpoint, fully_synced.fully_synced_count, partially_synced.partially_synced_count, unsynced.unsynced_count
         FROM (
@@ -414,9 +429,9 @@ async fn get_users_status_by_primary(pool: &PgPool, run_id: i32) -> anyhow::Resu
     .map(|row| CNodeSyncedStatus {
         spid: row.spid,
         endpoint: row.endpoint,
-        fully_synced_count: row.fully_synced_count,
-        partially_synced_count: row.partially_synced_count,
-        unsynced_count: row.unsynced_count,
+        fully_synced_count: row.fully_synced_count.unwrap_or(0),
+        partially_synced_count: row.partially_synced_count.unwrap_or(0),
+        unsynced_count: row.unsynced_count.unwrap_or(0),
     })
     .collect::<Vec<CNodeSyncedStatus>>();
 
@@ -424,7 +439,10 @@ async fn get_users_status_by_primary(pool: &PgPool, run_id: i32) -> anyhow::Resu
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_users_status_by_replica(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
+async fn get_users_status_by_replica(
+    pool: &PgPool,
+    run_id: i32,
+) -> anyhow::Result<Vec<CNodeSyncedStatus>> {
     let users_status_by_replica = sqlx::query!(
         r#"
         SELECT 
@@ -608,9 +626,21 @@ async fn get_users_status_by_replica(pool: &PgPool, run_id: i32) -> anyhow::Resu
     .map(|row| CNodeSyncedStatus {
         spid: row.spid,
         endpoint: row.endpoint,
-        fully_synced_count: row.fully_synced_count,
-        partially_synced_count: row.partially_synced_count,
-        unsynced_count: row.unsynced_count,
+        fully_synced_count: row
+            .fully_synced_count
+            .unwrap_or(BigDecimal::from(0))
+            .to_i64()
+            .unwrap_or(0),
+        partially_synced_count: row
+            .partially_synced_count
+            .unwrap_or(BigDecimal::from(0))
+            .to_i64()
+            .unwrap_or(0),
+        unsynced_count: row
+            .unsynced_count
+            .unwrap_or(BigDecimal::from(0))
+            .to_i64()
+            .unwrap_or(0),
     })
     .collect::<Vec<CNodeSyncedStatus>>();
 
