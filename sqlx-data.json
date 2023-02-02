@@ -354,18 +354,6 @@
     },
     "query": "\n        SELECT number FROM discovery.blocks WHERE is_current = TRUE LIMIT 1;\n        "
   },
-  "6e518576b776b2933318b0ba394e1809f5a48aa0694a8b47590ca0360a7850c4": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "\n        INSERT INTO network_monitoring_users (\n            user_id,\n            wallet,\n            replica_set,\n            run_id,\n            primarySpID,\n            secondary1SpID,\n            secondary2SpID\n        )\n        SELECT\n            user_id,\n            wallet,\n            creator_node_endpoint as replica_set,\n            $1,\n            primary_id as primarySpID,\n            secondary_ids[1] as secondary1SpID,\n            secondary_ids[2] as secondary2SpID\n        FROM discovery.users\n        WHERE is_current = TRUE;\n    "
-  },
   "723c1cb0d6d763a129fdb61e66144947319b6abce7117b98bb190b6b8d7514c0": {
     "describe": {
       "columns": [
@@ -485,6 +473,18 @@
       }
     },
     "query": "\n        SELECT joined.endpoint AS endpoint, COUNT(*) AS count\n        FROM (\n            (SELECT * FROM network_monitoring_content_nodes WHERE run_id = $1) AS cnodes\n        JOIN\n        (\n            SELECT user_id, unnest(string_to_array(replica_set, ',')) AS user_endpoint \n            FROM network_monitoring_users\n            WHERE run_id = $1\n        ) as unnested_users\n        ON\n            cnodes.endpoint = unnested_users.user_endpoint\n        ) AS joined\n        GROUP BY \n            joined.endpoint; \n    "
+  },
+  "8895d60fb3acdaac64ce7a5dd170c6a0df5c7e9cb6b8742c167bd103c712e472": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n        INSERT INTO network_monitoring_users (\n            user_id,\n            wallet,\n            replica_set,\n            run_id,\n            primarySpID,\n            secondary1SpID,\n            secondary2SpID\n        )\n        SELECT\n            user_id,\n            wallet,\n            creator_node_endpoint AS replica_set,\n            $1,\n            primary_id as primarySpID,\n            secondary_ids[1] as secondary1SpID,\n            secondary_ids[2] as secondary2SpID\n        FROM discovery.users\n        WHERE is_current = TRUE;\n    "
   },
   "8ba07fdc1401a2486f0d1e8ebae45577a742f3f59fa08df1b9c1d6f9130cb5d0": {
     "describe": {

@@ -107,7 +107,7 @@ async fn import_users(pool: &PgPool, run_id: i32) -> anyhow::Result<()> {
         SELECT
             user_id,
             wallet,
-            creator_node_endpoint as replica_set,
+            creator_node_endpoint AS replica_set,
             $1,
             primary_id as primarySpID,
             secondary_ids[1] as secondary1SpID,
