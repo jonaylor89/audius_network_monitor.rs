@@ -11,6 +11,14 @@ pub struct CNodeCount {
     pub count: i64,
 }
 
+pub struct CNodeSyncedStatus {
+    pub spid: i64,
+    pub endpoint: String,
+    pub fully_synced_count: i64,
+    pub partially_synced_count: i64,
+    pub unsynced_count: i64,
+}
+
 #[tracing::instrument(skip(pool))]
 pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> anyhow::Result<()> {
     // GENERATE METRICS
@@ -97,8 +105,8 @@ async fn get_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
 
 #[tracing::instrument(skip(pool))]
 async fn get_all_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CNodeCount>> {
-
-    let all_user_count: Vec<CNodeCount> = sqlx::query!(r#"
+    let all_user_count: Vec<CNodeCount> = sqlx::query!(
+        r#"
         SELECT joined.endpoint AS endpoint, COUNT(*) AS count
         FROM (
             (SELECT * FROM network_monitoring_content_nodes WHERE run_id = $1) AS cnodes
@@ -294,7 +302,7 @@ async fn get_users_with_entire_replica_in_spid_set_count(
     SELECT COUNT(*) as user_count
     FROM network_monitoring_users
     WHERE
-        run_id = :run_id
+        run_id = $1
     AND 
         primaryspid = ANY( $2 )
     AND
@@ -303,7 +311,7 @@ async fn get_users_with_entire_replica_in_spid_set_count(
         secondary2spid = ANY( $2 ); 
     "#,
         run_id,
-        foundation_nodes 
+        foundation_nodes
     )
     .fetch_one(pool)
     .await?
@@ -318,15 +326,293 @@ async fn get_users_with_entire_replica_set_not_in_spid_set_count(
     run_id: i32,
     spids: &Vec<u16>,
 ) -> anyhow::Result<i64> {
-    Ok(0)
+    let users_with_entire_replica_set_not_in_spid_set = sqlx::query!(
+        r#"
+        SELECT COUNT(*) as user_count
+        FROM network_monitoring_users
+        WHERE
+            run_id = $1
+        AND 
+            primaryspid != ALL( $2 )
+        AND
+            secondary1spid != ALL( $2 )
+        AND 
+            secondary2spid != ALL( $2 );
+   "#,
+        run_id,
+        foundation_nodes,
+    )
+    .fetch_one(pool)
+    .await?
+    .user_count;
+
+    Ok(users_with_entire_replica_set_not_in_spid_set)
 }
 
 #[tracing::instrument(skip(pool))]
 async fn get_users_status_by_primary(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
-    Ok(0)
+    let users_status_by_primary = sqlx::query!(r#"
+        SELECT fully_synced.spid, cnodes.endpoint, fully_synced.fully_synced_count, partially_synced.partially_synced_count, unsynced.unsynced_count
+        FROM (
+            SELECT primaryspid AS spid, COUNT(*) as fully_synced_count
+            FROM network_monitoring_users
+            WHERE
+                run_id = $1
+            AND 
+                primary_clock_value IS NOT NULL
+            AND
+                primary_clock_value = secondary1_clock_value
+            AND
+                secondary1_clock_value = secondary2_clock_value
+            GROUP BY primaryspid
+        ) AS fully_synced
+        JOIN (
+            SELECT primaryspid AS SPID, COUNT(*) AS partially_synced_count
+            FROM network_monitoring_users
+            WHERE 
+                run_id = $1
+            AND 
+                primary_clock_value IS NOT NULL
+            AND ( 
+                primary_clock_value = secondary1_clock_value
+                OR
+                primary_clock_value = secondary2_clock_value
+            )
+            AND 
+                secondary1_clock_value != secondary2_clock_value
+            GROUP BY primaryspid
+        ) AS partially_synced
+        ON fully_synced.spid = partially_synced.spid
+        JOIN (
+            SELECT primaryspid AS spid, COUNT(*) AS unsynced_count
+            FROM network_monitoring_users
+            WHERE 
+                run_id = $1
+            AND 
+                primary_clock_value IS NOT NULL
+            AND 
+                primary_clock_value != secondary1_clock_value
+            AND
+                primary_clock_value != secondary2_clock_value
+            GROUP BY primaryspid
+        ) AS unsynced
+        ON fully_synced.spid = unsynced.spid
+        JOIN (
+            SELECT spid, endpoint
+            FROM network_monitoring_content_nodes
+            WHERE
+                run_id = $1
+        ) AS cnodes
+        ON cnodes.spid = fully_synced.spid
+        ORDER BY fully_synced.spid; 
+    "#,
+        run_id,
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|row| CNodeSyncedStatus {
+        spid: row.spid,
+        endpoint: row.endpoint,
+        fully_synced_count: row.fully_synced_count,
+        partially_synced_count: row.partially_synced_count,
+        unsynced_count: row.unsynced_count,
+    })
+    .collect::<Vec<CNodeSyncedStatus>>();
+
+    Ok(users_status_by_primary)
 }
 
 #[tracing::instrument(skip(pool))]
 async fn get_users_status_by_replica(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
-    Ok(0)
+    let users_status_by_replica = sqlx::query!(
+        r#"
+        SELECT 
+            fully_synced.spid, 
+            cnodes.endpoint, 
+            fully_synced.fully_synced_count, 
+            partially_synced.partially_synced_count, 
+            unsynced.unsynced_count
+        FROM (
+            SELECT 
+                fully_synced_primary.spid AS spid, 
+                (SUM(fully_synced_primary.fully_synced_count) +
+                SUM(fully_synced_secondary1.fully_synced_count) +
+                SUM(fully_synced_secondary2.fully_synced_count)) AS fully_synced_count
+            FROM (
+                SELECT primaryspid AS spid, COUNT(*) as fully_synced_count
+                FROM network_monitoring_users
+                WHERE
+                    run_id = $1
+                AND 
+                    primary_clock_value IS NOT NULL
+                AND
+                    primary_clock_value = secondary1_clock_value
+                AND
+                    secondary1_clock_value = secondary2_clock_value
+                GROUP BY primaryspid
+            ) AS fully_synced_primary
+            JOIN (
+                SELECT secondary1spid AS spid, COUNT(*) as fully_synced_count
+                FROM network_monitoring_users
+                WHERE
+                    run_id = $1
+                AND 
+                    primary_clock_value IS NOT NULL
+                AND
+                    primary_clock_value = secondary1_clock_value
+                AND
+                    secondary1_clock_value = secondary2_clock_value
+                GROUP BY secondary1spid
+            ) AS fully_synced_secondary1
+            ON fully_synced_primary.spid = fully_synced_secondary1.spid
+            JOIN (
+                SELECT secondary2spid AS spid, COUNT(*) as fully_synced_count
+                FROM network_monitoring_users
+                WHERE
+                    run_id = $1
+                AND 
+                    primary_clock_value IS NOT NULL
+                AND
+                    primary_clock_value = secondary1_clock_value
+                AND
+                    secondary1_clock_value = secondary2_clock_value
+                GROUP BY secondary2spid
+            ) AS fully_synced_secondary2
+            ON fully_synced_primary.spid = fully_synced_secondary2.spid
+            GROUP BY fully_synced_primary.spid
+        ) AS fully_synced
+        JOIN (
+            SELECT 
+                partially_synced_primary.spid AS spid, 
+                (SUM(partially_synced_primary.partially_synced_count) +
+                SUM(partially_synced_secondary1.partially_synced_count) +
+                SUM(partially_synced_secondary2.partially_synced_count)) AS partially_synced_count
+            FROM (
+                SELECT primaryspid AS SPID, COUNT(*) AS partially_synced_count
+                FROM network_monitoring_users
+                WHERE 
+                    run_id = $1
+                AND 
+                    primary_clock_value IS NOT NULL
+                AND ( 
+                    primary_clock_value = secondary1_clock_value
+                    OR
+                    primary_clock_value = secondary2_clock_value
+                )
+                AND 
+                    secondary1_clock_value != secondary2_clock_value
+                GROUP BY primaryspid
+            ) AS partially_synced_primary
+            JOIN (
+                SELECT secondary1spid AS SPID, COUNT(*) AS partially_synced_count
+                FROM network_monitoring_users
+                WHERE 
+                    run_id = $1
+                AND 
+                    primary_clock_value IS NOT NULL
+                AND ( 
+                    primary_clock_value = secondary1_clock_value
+                    OR
+                    primary_clock_value = secondary2_clock_value
+                )
+                AND 
+                    secondary1_clock_value != secondary2_clock_value
+                GROUP BY secondary1spid
+            ) AS partially_synced_secondary1
+            ON partially_synced_primary.spid = partially_synced_secondary1.spid
+            JOIN (
+                SELECT secondary2spid AS SPID, COUNT(*) AS partially_synced_count
+                FROM network_monitoring_users
+                WHERE 
+                    run_id = $1
+                AND 
+                    primary_clock_value IS NOT NULL
+                AND ( 
+                    primary_clock_value = secondary1_clock_value
+                    OR
+                    primary_clock_value = secondary2_clock_value
+                )
+                AND 
+                    secondary1_clock_value != secondary2_clock_value
+                GROUP BY secondary2spid
+            ) AS partially_synced_secondary2
+            ON partially_synced_primary.spid = partially_synced_secondary2.spid
+            GROUP BY partially_synced_primary.spid
+        ) AS partially_synced
+        ON fully_synced.spid = partially_synced.spid
+        JOIN (
+            SELECT 
+                unsynced_primary.spid AS spid, 
+                (SUM(unsynced_primary.unsynced_count) +
+                SUM(unsynced_secondary1.unsynced_count) +
+                SUM(unsynced_secondary2.unsynced_count)) AS unsynced_count
+            FROM (
+                SELECT primaryspid AS spid, COUNT(*) AS unsynced_count
+                FROM network_monitoring_users
+                WHERE 
+                    run_id = $1
+                AND 
+                    primary_clock_value IS NOT NULL
+                AND 
+                    primary_clock_value != secondary1_clock_value
+                AND
+                    primary_clock_value != secondary2_clock_value
+                GROUP BY primaryspid
+            ) AS unsynced_primary
+            JOIN (
+                SELECT secondary1spid AS spid, COUNT(*) AS unsynced_count
+                FROM network_monitoring_users
+                WHERE 
+                    run_id = $1
+                AND 
+                    primary_clock_value IS NOT NULL
+                AND 
+                    primary_clock_value != secondary1_clock_value
+                AND
+                    primary_clock_value != secondary2_clock_value
+                GROUP BY secondary1spid
+            ) AS unsynced_secondary1
+            ON unsynced_primary.spid = unsynced_secondary1.spid
+            JOIN (
+                SELECT secondary2spid AS spid, COUNT(*) AS unsynced_count
+                FROM network_monitoring_users
+                WHERE 
+                    run_id = $1
+                AND 
+                    primary_clock_value IS NOT NULL
+                AND 
+                    primary_clock_value != secondary1_clock_value
+                AND
+                    primary_clock_value != secondary2_clock_value
+                GROUP BY secondary2spid
+            ) AS unsynced_secondary2
+            ON unsynced_primary.spid = unsynced_secondary2.spid
+            GROUP BY unsynced_primary.spid
+        ) AS unsynced
+        ON fully_synced.spid = unsynced.spid
+        JOIN (
+            SELECT spid, endpoint
+            FROM network_monitoring_content_nodes
+            WHERE
+                run_id = $1 
+        ) AS cnodes
+        ON cnodes.spid = fully_synced.spid
+        ORDER BY fully_synced.spid;
+        "#,
+        run_id,
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|row| CNodeSyncedStatus {
+        spid: row.spid,
+        endpoint: row.endpoint,
+        fully_synced_count: row.fully_synced_count,
+        partially_synced_count: row.partially_synced_count,
+        unsynced_count: row.unsynced_count,
+    })
+    .collect::<Vec<CNodeSyncedStatus>>();
+
+    Ok(users_status_by_replica)
 }
