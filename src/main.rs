@@ -4,9 +4,12 @@ use audius_network_monitor::{
     discovery, metrics,
     telemetry::{get_subscriber, init_subscriber},
 };
+use color_eyre::eyre::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    color_eyre::install()?;
+
     let subscriber = get_subscriber(
         "audius_network_monitor".into(),
         "info".into(),

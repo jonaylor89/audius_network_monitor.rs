@@ -1,5 +1,5 @@
-use sqlx::PgPool;
 use color_eyre::eyre::Result;
+use sqlx::PgPool;
 
 use crate::domain::ContentNode;
 

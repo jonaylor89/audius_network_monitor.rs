@@ -1,3 +1,4 @@
+use color_eyre::eyre::Result;
 use num_traits::cast::ToPrimitive;
 use prometheus::labels;
 use sqlx::{
@@ -7,7 +8,6 @@ use sqlx::{
     },
     PgPool,
 };
-use color_eyre::eyre::Result;
 
 use crate::{configuration::MetricsSettings, prometheus::USER_COUNT_GAUGE};
 
@@ -363,10 +363,7 @@ async fn get_users_with_entire_replica_set_not_in_spid_set_count(
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_users_status_by_primary(
-    pool: &PgPool,
-    run_id: i32,
-) -> Result<Vec<CNodeSyncedStatus>> {
+async fn get_users_status_by_primary(pool: &PgPool, run_id: i32) -> Result<Vec<CNodeSyncedStatus>> {
     let users_status_by_primary = sqlx::query!(r#"
         SELECT fully_synced.spid, cnodes.endpoint, fully_synced.fully_synced_count, partially_synced.partially_synced_count, unsynced.unsynced_count
         FROM (
@@ -440,10 +437,7 @@ async fn get_users_status_by_primary(
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_users_status_by_replica(
-    pool: &PgPool,
-    run_id: i32,
-) -> Result<Vec<CNodeSyncedStatus>> {
+async fn get_users_status_by_replica(pool: &PgPool, run_id: i32) -> Result<Vec<CNodeSyncedStatus>> {
     let users_status_by_replica = sqlx::query!(
         r#"
         SELECT 

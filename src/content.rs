@@ -1,8 +1,8 @@
+use color_eyre::eyre::Result;
 use futures::{future::join_all, stream::futures_unordered::FuturesUnordered};
 use sqlx::PgPool;
 use thiserror::Error;
 use tokio::join;
-use color_eyre::eyre::Result;
 
 use crate::{
     configuration::ContentSettings,

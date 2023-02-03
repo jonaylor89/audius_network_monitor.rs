@@ -1,6 +1,6 @@
+use color_eyre::eyre::Result;
 use secrecy::ExposeSecret;
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use color_eyre::eyre::Result;
 
 use crate::configuration::DatabaseSettings;
 
