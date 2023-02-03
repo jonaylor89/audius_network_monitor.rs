@@ -52,7 +52,7 @@ pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> an
 
     // REGISTER METRICS
     USER_COUNT_GAUGE
-        .with_label_values(&[run_id.to_str()])
+        .with_label_values(&[&run_id.to_string()])
         .set(user_count);
 
     let metric_families = prometheus::gather();
