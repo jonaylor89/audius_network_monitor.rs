@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 use std::{collections::HashMap};
+use color_eyre::eyre::Result;
 
 use tokio_retry::{
     strategy::{jitter, ExponentialBackoff},
@@ -41,7 +42,7 @@ pub struct UserStatusPayload {
 pub async fn make_request(
     url: &str,
     payload: &UserStatusPayload,
-) -> eyre::Result<Vec<WalletClockPair>> {
+) -> Result<Vec<WalletClockPair>> {
     let retry_strategy = ExponentialBackoff::from_millis(10)
         .map(jitter) // add jitter to delays
         .take(3); // limit to 3 retries
@@ -55,7 +56,7 @@ pub async fn make_request(
 async fn network_call(
     url: &str,
     payload: &UserStatusPayload,
-) -> eyre::Result<Vec<WalletClockPair>> {
+) -> Result<Vec<WalletClockPair>> {
     let client = reqwest::Client::new();
     let res = client.post(url).json(payload).send().await?;
 

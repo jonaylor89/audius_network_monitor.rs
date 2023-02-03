@@ -1,5 +1,6 @@
 use secrecy::ExposeSecret;
 use sqlx::{postgres::PgPoolOptions, PgPool};
+use color_eyre::eyre::Result;
 
 use crate::configuration::DatabaseSettings;
 
@@ -16,7 +17,7 @@ pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
 pub async fn create_foreign_connection(
     pool: &PgPool,
     configuration: &DatabaseSettings,
-) -> eyre::Result<()> {
+) -> Result<()> {
     sqlx::query!(
         r#"
         CREATE EXTENSION IF NOT EXISTS postgres_fdw;

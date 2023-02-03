@@ -6,7 +6,7 @@ use audius_network_monitor::{
 };
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
+async fn main() -> Result<()> {
     let subscriber = get_subscriber(
         "audius_network_monitor".into(),
         "info".into(),

@@ -1,9 +1,10 @@
 use sqlx::PgPool;
+use color_eyre::eyre::Result;
 
 use crate::domain::ContentNode;
 
 #[tracing::instrument(skip(pool))]
-pub async fn index(pool: &PgPool) -> eyre::Result<i32> {
+pub async fn index(pool: &PgPool) -> Result<i32> {
     let run_id = create_new_run(pool).await?;
 
     delete_old_run_data(pool, run_id).await?;
@@ -18,7 +19,7 @@ pub async fn index(pool: &PgPool) -> eyre::Result<i32> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn create_new_run(pool: &PgPool) -> eyre::Result<i32> {
+async fn create_new_run(pool: &PgPool) -> Result<i32> {
     // get latest block number
     let latest_block_number = sqlx::query!(
         r#"
@@ -68,7 +69,7 @@ async fn create_new_run(pool: &PgPool) -> eyre::Result<i32> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn delete_old_run_data(pool: &PgPool, run_id: i32) -> eyre::Result<()> {
+async fn delete_old_run_data(pool: &PgPool, run_id: i32) -> Result<()> {
     // Number of runs to keep in the DB
     let latest_runs_to_keep = 3;
     let to_delete = run_id - latest_runs_to_keep;
@@ -92,7 +93,7 @@ async fn delete_old_run_data(pool: &PgPool, run_id: i32) -> eyre::Result<()> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn import_users(pool: &PgPool, run_id: i32) -> eyre::Result<()> {
+async fn import_users(pool: &PgPool, run_id: i32) -> Result<()> {
     sqlx::query!(
         r#"
         INSERT INTO network_monitoring_users (
@@ -124,7 +125,7 @@ async fn import_users(pool: &PgPool, run_id: i32) -> eyre::Result<()> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn import_content_nodes(pool: &PgPool, run_id: i32) -> eyre::Result<()> {
+async fn import_content_nodes(pool: &PgPool, run_id: i32) -> Result<()> {
     let content_nodes = vec![
         ContentNode {
             spid: 6,
@@ -182,7 +183,7 @@ async fn import_content_nodes(pool: &PgPool, run_id: i32) -> eyre::Result<()> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn import_cids(pool: &PgPool, run_id: i32) -> eyre::Result<()> {
+async fn import_cids(pool: &PgPool, run_id: i32) -> Result<()> {
     sqlx::query!(
         r#"
         INSERT INTO network_monitoring_cids_from_discovery (cid, run_id, ctype, user_id)
