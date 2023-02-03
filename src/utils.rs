@@ -41,7 +41,7 @@ pub struct UserStatusPayload {
 pub async fn make_request(
     url: &str,
     payload: &UserStatusPayload,
-) -> anyhow::Result<Vec<WalletClockPair>> {
+) -> eyre::Result<Vec<WalletClockPair>> {
     let retry_strategy = ExponentialBackoff::from_millis(10)
         .map(jitter) // add jitter to delays
         .take(3); // limit to 3 retries
@@ -55,7 +55,7 @@ pub async fn make_request(
 async fn network_call(
     url: &str,
     payload: &UserStatusPayload,
-) -> anyhow::Result<Vec<WalletClockPair>> {
+) -> eyre::Result<Vec<WalletClockPair>> {
     let client = reqwest::Client::new();
     let res = client.post(url).json(payload).send().await?;
 

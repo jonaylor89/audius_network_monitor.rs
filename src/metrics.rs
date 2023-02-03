@@ -24,7 +24,7 @@ pub struct CNodeSyncedStatus {
 }
 
 #[tracing::instrument(skip(pool))]
-pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> anyhow::Result<()> {
+pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> eyre::Result<()> {
     // GENERATE METRICS
     let run_time_start = get_run_start_time(pool, run_id).await?;
     let user_count = get_user_count(pool, run_id).await?;
@@ -71,7 +71,7 @@ pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> an
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_run_start_time(pool: &PgPool, run_id: i32) -> anyhow::Result<DateTime<Utc>> {
+async fn get_run_start_time(pool: &PgPool, run_id: i32) -> eyre::Result<DateTime<Utc>> {
     let run_start_time = sqlx::query!(
         r#"
     SELECT created_at
@@ -90,7 +90,7 @@ async fn get_run_start_time(pool: &PgPool, run_id: i32) -> anyhow::Result<DateTi
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
+async fn get_user_count(pool: &PgPool, run_id: i32) -> eyre::Result<i64> {
     let user_count = sqlx::query!(
         r#"
     SELECT COUNT(*) as user_count
@@ -108,7 +108,7 @@ async fn get_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_all_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CNodeCount>> {
+async fn get_all_user_count(pool: &PgPool, run_id: i32) -> eyre::Result<Vec<CNodeCount>> {
     let all_user_count: Vec<CNodeCount> = sqlx::query!(
         r#"
         SELECT joined.endpoint AS endpoint, COUNT(*) AS count
@@ -141,7 +141,7 @@ async fn get_all_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CN
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_primary_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Vec<CNodeCount>> {
+async fn get_primary_user_count(pool: &PgPool, run_id: i32) -> eyre::Result<Vec<CNodeCount>> {
     let primary_user_count: Vec<CNodeCount> = sqlx::query!(
         r#"
             SELECT 
@@ -171,7 +171,7 @@ async fn get_primary_user_count(pool: &PgPool, run_id: i32) -> anyhow::Result<Ve
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_fully_synced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
+async fn get_fully_synced_users_count(pool: &PgPool, run_id: i32) -> eyre::Result<i64> {
     let fully_synced_users_count = sqlx::query!(
         r#"
     SELECT COUNT(*) as user_count
@@ -198,7 +198,7 @@ async fn get_fully_synced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Res
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_partially_synced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
+async fn get_partially_synced_users_count(pool: &PgPool, run_id: i32) -> eyre::Result<i64> {
     let partially_synced_users_count = sqlx::query!(
         r#"
     SELECT COUNT(*) as user_count
@@ -228,7 +228,7 @@ async fn get_partially_synced_users_count(pool: &PgPool, run_id: i32) -> anyhow:
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_unsynced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
+async fn get_unsynced_users_count(pool: &PgPool, run_id: i32) -> eyre::Result<i64> {
     let unsynced_users_count = sqlx::query!(
         r#"
     SELECT COUNT(*) as user_count
@@ -255,7 +255,7 @@ async fn get_unsynced_users_count(pool: &PgPool, run_id: i32) -> anyhow::Result<
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_users_with_null_primary_clock(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
+async fn get_users_with_null_primary_clock(pool: &PgPool, run_id: i32) -> eyre::Result<i64> {
     let users_with_null_primary_clock = sqlx::query!(
         r#"
     SELECT COUNT(*) as user_count
@@ -276,7 +276,7 @@ async fn get_users_with_null_primary_clock(pool: &PgPool, run_id: i32) -> anyhow
 }
 
 #[tracing::instrument(skip(pool))]
-async fn get_users_with_unhealthy_replica(pool: &PgPool, run_id: i32) -> anyhow::Result<i64> {
+async fn get_users_with_unhealthy_replica(pool: &PgPool, run_id: i32) -> eyre::Result<i64> {
     let users_with_unhealthy_replica = sqlx::query!(
         r#"
     SELECT COUNT(*) as user_count
@@ -306,7 +306,7 @@ async fn get_users_with_entire_replica_in_spid_set_count(
     pool: &PgPool,
     run_id: i32,
     foundation_nodes: &Vec<i32>,
-) -> anyhow::Result<i64> {
+) -> eyre::Result<i64> {
     let users_with_all_foundation_node_replica_set = sqlx::query!(
         r#"
     SELECT COUNT(*) as user_count
@@ -336,7 +336,7 @@ async fn get_users_with_entire_replica_set_not_in_spid_set_count(
     pool: &PgPool,
     run_id: i32,
     spids: &Vec<i32>,
-) -> anyhow::Result<i64> {
+) -> eyre::Result<i64> {
     let users_with_entire_replica_set_not_in_spid_set = sqlx::query!(
         r#"
         SELECT COUNT(*) as user_count
@@ -365,7 +365,7 @@ async fn get_users_with_entire_replica_set_not_in_spid_set_count(
 async fn get_users_status_by_primary(
     pool: &PgPool,
     run_id: i32,
-) -> anyhow::Result<Vec<CNodeSyncedStatus>> {
+) -> eyre::Result<Vec<CNodeSyncedStatus>> {
     let users_status_by_primary = sqlx::query!(r#"
         SELECT fully_synced.spid, cnodes.endpoint, fully_synced.fully_synced_count, partially_synced.partially_synced_count, unsynced.unsynced_count
         FROM (
@@ -442,7 +442,7 @@ async fn get_users_status_by_primary(
 async fn get_users_status_by_replica(
     pool: &PgPool,
     run_id: i32,
-) -> anyhow::Result<Vec<CNodeSyncedStatus>> {
+) -> eyre::Result<Vec<CNodeSyncedStatus>> {
     let users_status_by_replica = sqlx::query!(
         r#"
         SELECT 

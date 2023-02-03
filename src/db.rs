@@ -16,7 +16,7 @@ pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
 pub async fn create_foreign_connection(
     pool: &PgPool,
     configuration: &DatabaseSettings,
-) -> anyhow::Result<()> {
+) -> eyre::Result<()> {
     sqlx::query!(
         r#"
         CREATE EXTENSION IF NOT EXISTS postgres_fdw;
