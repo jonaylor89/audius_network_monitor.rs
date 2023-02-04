@@ -9,7 +9,19 @@ use sqlx::{
     PgPool,
 };
 
-use crate::{configuration::MetricsSettings, prometheus::USER_COUNT_GAUGE};
+use crate::{
+    configuration::MetricsSettings,
+    prometheus::{
+        ALL_USER_COUNT_GAUGE, FULLY_SYNCED_USERS_COUNT_GAUGE,
+        FULLY_SYNCED_USER_BY_PRIMARY_COUNT_GAUGE, FULLY_SYNCED_USER_BY_REPLICA_COUNT_GAUGE,
+        NULL_PRIMARY_USERS_COUNT_GAUGE, PARTIALLY_SYNCED_USERS_COUNT_GAUGE,
+        PARTIALLY_SYNCED_USER_BY_PRIMARY_COUNT_GAUGE, PARTIALLY_SYNCED_USER_BY_REPLICA_COUNT_GAUGE,
+        PRIMARY_USER_COUNT_GAUGE, UNHEALTHY_REPLICA_USERS_COUNT_GAUGE, UNSYNCED_USERS_COUNT_GAUGE,
+        UNSYNCED_USER_BY_PRIMARY_COUNT_GAUGE, UNSYNCED_USER_BY_REPLICA_COUNT_GAUGE,
+        USERS_WITH_ALL_FOUNDATION_NODE_REPLICA_SET_GAUGE,
+        USERS_WITH_NO_FOUNDATION_NODE_REPLICA_SET_GAUGE, USER_COUNT_GAUGE,
+    },
+};
 
 pub struct CNodeCount {
     pub endpoint: String,
@@ -55,6 +67,70 @@ pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> Re
     USER_COUNT_GAUGE
         .with_label_values(&[&run_id.to_string()])
         .set(user_count);
+
+    for cnode_count in all_user_count {
+        ALL_USER_COUNT_GAUGE
+            .with_label_values(&[&cnode_count.endpoint, &run_id.to_string()])
+            .set(cnode_count.count);
+    }
+
+    for cnode_count in primary_user_count {
+        PRIMARY_USER_COUNT_GAUGE
+            .with_label_values(&[&cnode_count.endpoint, &run_id.to_string()])
+            .set(cnode_count.count);
+    }
+
+    FULLY_SYNCED_USERS_COUNT_GAUGE
+        .with_label_values(&[&run_id.to_string()])
+        .set(fully_synced_users_count);
+
+    PARTIALLY_SYNCED_USERS_COUNT_GAUGE
+        .with_label_values(&[&run_id.to_string()])
+        .set(partially_synced_users_count);
+
+    UNSYNCED_USERS_COUNT_GAUGE
+        .with_label_values(&[&run_id.to_string()])
+        .set(unsynced_users_count);
+
+    NULL_PRIMARY_USERS_COUNT_GAUGE
+        .with_label_values(&[&run_id.to_string()])
+        .set(users_with_null_primary_clock);
+
+    UNHEALTHY_REPLICA_USERS_COUNT_GAUGE
+        .with_label_values(&[&run_id.to_string()])
+        .set(users_with_unhealthy_replica);
+
+    USERS_WITH_ALL_FOUNDATION_NODE_REPLICA_SET_GAUGE
+        .with_label_values(&[&run_id.to_string()])
+        .set(users_with_all_foundation_node_replica_set);
+
+    USERS_WITH_NO_FOUNDATION_NODE_REPLICA_SET_GAUGE
+        .with_label_values(&[&run_id.to_string()])
+        .set(users_with_no_foundation_node_replica_set_count);
+
+    for users_status in users_status_by_primary {
+        FULLY_SYNCED_USER_BY_PRIMARY_COUNT_GAUGE
+            .with_label_values(&[&users_status.endpoint, &run_id.to_string()])
+            .set(users_status.fully_synced_count);
+        PARTIALLY_SYNCED_USER_BY_PRIMARY_COUNT_GAUGE
+            .with_label_values(&[&users_status.endpoint, &run_id.to_string()])
+            .set(users_status.partially_synced_count);
+        UNSYNCED_USER_BY_PRIMARY_COUNT_GAUGE
+            .with_label_values(&[&users_status.endpoint, &run_id.to_string()])
+            .set(users_status.unsynced_count);
+    }
+
+    for users_status in users_status_by_replica {
+        FULLY_SYNCED_USER_BY_REPLICA_COUNT_GAUGE
+            .with_label_values(&[&users_status.endpoint, &run_id.to_string()])
+            .set(users_status.fully_synced_count);
+        PARTIALLY_SYNCED_USER_BY_REPLICA_COUNT_GAUGE
+            .with_label_values(&[&users_status.endpoint, &run_id.to_string()])
+            .set(users_status.partially_synced_count);
+        UNSYNCED_USER_BY_REPLICA_COUNT_GAUGE
+            .with_label_values(&[&users_status.endpoint, &run_id.to_string()])
+            .set(users_status.unsynced_count);
+    }
 
     let metric_families = prometheus::gather();
     prometheus::push_metrics(
