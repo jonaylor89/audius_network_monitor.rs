@@ -138,10 +138,7 @@ pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> Re
         labels! {"run_id".to_owned() => run_id.to_string(),},
         &config.push_gateway,
         metric_families,
-        Some(prometheus::BasicAuthentication {
-            username: "user".to_owned(),
-            password: "pass".to_owned(),
-        }),
+        None,
     )?;
 
     Ok(())

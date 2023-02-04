@@ -180,14 +180,33 @@ async fn check_replica(
     endpoint: &str,
 ) -> Result<()> {
     for offset in (0..count).step_by(BATCH_SIZE) {
-        let wallet_batch = get_batch(replica, pool, run_id, spid, offset).await?;
+        let wallet_batch = match get_batch(replica, pool, run_id, spid, offset).await {
+            Ok(batch) => batch,
+            Err(e) => {
+                tracing::error!("error getting batch {:?}", e);
+                continue;
+            }
+        };
+
         if wallet_batch.is_empty() {
             continue;
         }
 
-        let clock_values = get_user_clock_values(endpoint, wallet_batch).await?;
+        let clock_values = match get_user_clock_values(endpoint, wallet_batch).await {
+            Ok(values) => values,
+            Err(e) => {
+                tracing::error!("error getting clock values {:?}", e);
+                continue;
+            }
+        };
 
-        save_batch(replica, pool, run_id, spid, &clock_values).await?;
+        match save_batch(replica, pool, run_id, spid, &clock_values).await {
+            Ok(_) => (),
+            Err(e) => {
+                tracing::error!("error saving clock values {:?}", e);
+                continue;
+            }
+        };
     }
 
     Ok(())
