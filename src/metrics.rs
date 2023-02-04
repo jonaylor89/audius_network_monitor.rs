@@ -19,7 +19,7 @@ use crate::{
         PRIMARY_USER_COUNT_GAUGE, UNHEALTHY_REPLICA_USERS_COUNT_GAUGE, UNSYNCED_USERS_COUNT_GAUGE,
         UNSYNCED_USER_BY_PRIMARY_COUNT_GAUGE, UNSYNCED_USER_BY_REPLICA_COUNT_GAUGE,
         USERS_WITH_ALL_FOUNDATION_NODE_REPLICA_SET_GAUGE,
-        USERS_WITH_NO_FOUNDATION_NODE_REPLICA_SET_GAUGE, USER_COUNT_GAUGE,
+        USERS_WITH_NO_FOUNDATION_NODE_REPLICA_SET_GAUGE, USER_COUNT_GAUGE, TOTAL_JOB_DURATION_GAUGE,
     },
 };
 
@@ -131,6 +131,11 @@ pub async fn generate(pool: &PgPool, run_id: i32, config: MetricsSettings) -> Re
             .with_label_values(&[&users_status.endpoint, &run_id.to_string()])
             .set(users_status.unsynced_count);
     }
+
+    let total_run_time = Utc::now() - run_time_start;
+    TOTAL_JOB_DURATION_GAUGE
+        .with_label_values(&[&run_id.to_string()])
+        .set(total_run_time.num_seconds());
 
     let metric_families = prometheus::gather();
     prometheus::push_metrics(
