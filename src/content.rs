@@ -75,6 +75,11 @@ async fn get_content_nodes(pool: &PgPool, run_id: i32) -> Result<Vec<ContentNode
     Ok(content_nodes)
 }
 
+/// In parallel, for every replica in a user's replica set (primary, secondary1, secondary2)
+/// that equals the current content node endpoint (`cnode`)
+/// 1. Get the user's wallets
+/// 2. Get the clock value for that user from the content node 
+/// 3. Save the clock value in the network_monitoring DB
 #[tracing::instrument(skip(pool))]
 async fn check_users(pool: PgPool, run_id: i32, cnode: ContentNode) -> Result<()> {
     let ContentNode { spid, endpoint } = cnode;

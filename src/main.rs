@@ -23,10 +23,17 @@ async fn main() -> Result<()> {
     sqlx::migrate!("./migrations").run(&pool).await?;
     create_foreign_connection(&pool, &configuration.foreign_database).await?;
 
+    // Index data from the discovery node postgres DB
+    // into the separate network monitoring postgres DB
     let run_id = discovery::index(&pool).await?;
 
+    // Fetch data (CIDs and Users) from content nodes
+    // and save it into the network monitoring postgres DB
     content::index(&pool, run_id, configuration.content).await?;
 
+    // Run OLAP-type queries on the network monitoring DB
+    // and export the data to the prometheus push-gateway
+    // to be later scraped by prometheus
     metrics::generate(&pool, run_id, configuration.metrics).await?;
 
     Ok(())

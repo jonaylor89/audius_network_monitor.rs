@@ -5,14 +5,18 @@ use crate::domain::ContentNode;
 
 #[tracing::instrument(skip(pool))]
 pub async fn index(pool: &PgPool) -> Result<i32> {
+    // Create new run in table `network_monitoring_index_blocks`
     let run_id = create_new_run(pool).await?;
 
     delete_old_run_data(pool, run_id).await?;
 
+    // Pull Content Nodes list into table `network_monitoring_content_nodes`
     import_content_nodes(pool, run_id).await?;
 
+    // Pull table `users` into table `network_monitoring_users`
     import_users(pool, run_id).await?;
 
+    // Pull cids into table `network_monitoring_cids_from_discovery`
     import_cids(pool, run_id).await?;
 
     Ok(run_id)
